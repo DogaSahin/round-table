@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
+from app.core.realtime.routes import router as realtime_router
 from app.core.registry import build_registry
 from app.shared.errors import install_error_handlers
 
@@ -27,6 +28,8 @@ def create_app() -> FastAPI:
     app.state.registry = registry
     for router in registry.routers:
         app.include_router(router)
+
+    app.include_router(realtime_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
