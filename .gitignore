@@ -29,3 +29,6 @@ backend/data/media/
 Thumbs.db
 .vscode/
 .idea/
+
+# Agent scratch state (subagent-driven-development progress ledger)
+.superpowers/
