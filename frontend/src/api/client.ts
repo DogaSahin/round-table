@@ -49,5 +49,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     )
   }
 
-  return (await response.json()) as T
+  const text = await response.text()
+  if (text.length === 0) {
+    return undefined as T
+  }
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new ApiError('unknown_error', 'Invalid JSON response', {}, response.status)
+  }
 }

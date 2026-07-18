@@ -12,6 +12,14 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',
@@ -19,6 +27,5 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    globals: true,
   },
 })

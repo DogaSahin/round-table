@@ -72,4 +72,27 @@ describe('apiFetch', () => {
       body: JSON.stringify({ a: 1 }),
     })
   })
+
+  it('resolves to undefined for a successful response with an empty body (e.g. 204)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', mockFetch)
+
+    await expect(apiFetch('/campaigns/7')).resolves.toBeUndefined()
+  })
+
+  it('throws ApiError with code unknown_error when a 2xx response body is not valid JSON', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response('not json', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      }),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    await expect(apiFetch('/boom')).rejects.toMatchObject({
+      code: 'unknown_error',
+      message: 'Invalid JSON response',
+      status: 200,
+    })
+  })
 })
