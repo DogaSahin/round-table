@@ -1,0 +1,34 @@
+<script setup lang="ts"></script>
+
+<template>
+  <div class="app-shell">
+    <header class="app-shell__header">
+      <span class="app-shell__title">Round Table</span>
+    </header>
+    <main class="app-shell__content">
+      <router-view />
+    </main>
+  </div>
+</template>
+
+<style scoped>
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .app-shell__header {
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .app-shell__title {
+    font-weight: 600;
+  }
+
+  .app-shell__content {
+    flex: 1;
+    padding: 1.5rem;
+  }
+</style>

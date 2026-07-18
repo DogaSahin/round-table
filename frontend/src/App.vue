@@ -1,5 +1,7 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+  import AppShell from '@/layouts/AppShell.vue'
+</script>
 
 <template>
-  <div>Round Table — scaffold placeholder</div>
+  <AppShell />
 </template>
