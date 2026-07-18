@@ -34,9 +34,18 @@ packages = ["app"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+# Alembic-generated migration files follow the alembic/script.py.mako template
+# verbatim and are not hand-edited; exclude them from lint like other codegen.
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "C901"]
+
+[tool.ruff.lint.isort]
+# The local backend/alembic/ directory shares a name with the third-party
+# `alembic` package; without this, ruff's same-package detection misclassifies
+# `import alembic` as first-party inside alembic/env.py.
+known-third-party = ["alembic"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
