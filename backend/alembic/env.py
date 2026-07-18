@@ -12,6 +12,10 @@ from app.core.models import AppSetting, Campaign  # noqa: F401  (registers metad
 from app.core.realtime.broadcast import (
     BroadcastState,  # noqa: F401 - exercises models import surface
 )
+from app.modules.dice.models import (  # noqa: F401 - exercises models import surface
+    RollHistory,
+    SavedRoll,
+)
 
 config = context.config
 if config.config_file_name is not None:
