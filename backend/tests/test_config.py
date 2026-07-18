@@ -21,6 +21,13 @@ def test_cors_origins_parsed_from_comma_separated_env(monkeypatch) -> None:
     assert settings.cors_origins == ["http://localhost:5173", "http://localhost:4173"]
 
 
+def test_enabled_modules_parsed_from_comma_separated_env(monkeypatch) -> None:
+    monkeypatch.setenv("ENABLED_MODULES", "app.modules.dice,app.modules.factions")
+    get_settings.cache_clear()
+    settings = get_settings()
+    assert settings.enabled_modules == ["app.modules.dice", "app.modules.factions"]
+
+
 def test_get_settings_is_cached(monkeypatch) -> None:
     get_settings.cache_clear()
     first = get_settings()
