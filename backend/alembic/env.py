@@ -9,6 +9,9 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.core.database import Base
 from app.core.models import AppSetting, Campaign  # noqa: F401  (registers metadata)
+from app.core.realtime.broadcast import (
+    BroadcastState,  # noqa: F401 - exercises models import surface
+)
 
 config = context.config
 if config.config_file_name is not None:
