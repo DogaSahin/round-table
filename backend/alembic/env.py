@@ -16,6 +16,11 @@ from app.modules.dice.models import (  # noqa: F401 - exercises models import su
     RollHistory,
     SavedRoll,
 )
+from app.modules.factions.models import (  # noqa: F401 - exercises models import surface
+    Faction,
+    FactionActivity,
+    FactionClock,
+)
 from app.modules.sessions.models import (  # noqa: F401 - exercises models import surface
     GameSession,
     SessionLog,
