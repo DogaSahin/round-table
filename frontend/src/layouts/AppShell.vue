@@ -8,6 +8,7 @@
         <router-link to="/dice">Dice</router-link>
         <router-link to="/sessions">Sessions</router-link>
         <router-link to="/factions">Factions</router-link>
+        <router-link to="/npcs">NPCs</router-link>
       </nav>
     </header>
     <main class="app-shell__content">
