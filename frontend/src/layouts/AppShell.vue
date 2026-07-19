@@ -7,6 +7,7 @@
       <nav class="app-shell__nav">
         <router-link to="/dice">Dice</router-link>
         <router-link to="/sessions">Sessions</router-link>
+        <router-link to="/factions">Factions</router-link>
       </nav>
     </header>
     <main class="app-shell__content">

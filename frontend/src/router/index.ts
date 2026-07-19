@@ -3,12 +3,14 @@ import HomeView from '@/views/HomeView.vue'
 import HealthCheckView from '@/views/HealthCheckView.vue'
 import DiceView from '@/modules/dice/DiceView.vue'
 import SessionsView from '@/modules/sessions/SessionsView.vue'
+import FactionsView from '@/modules/factions/FactionsView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
   { path: '/health-check', name: 'health-check', component: HealthCheckView },
   { path: '/dice', name: 'dice', component: DiceView },
   { path: '/sessions', name: 'sessions', component: SessionsView },
+  { path: '/factions', name: 'factions', component: FactionsView },
 ]
 
 export const router = createRouter({
