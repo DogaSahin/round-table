@@ -25,6 +25,7 @@ class Settings(BaseSettings):
         "app.modules.dice",
         "app.modules.sessions",
         "app.modules.factions",
+        "app.modules.npcs",
     ]
 
     @field_validator("cors_origins", mode="before")
