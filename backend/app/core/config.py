@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     debug: bool = True
-    enabled_modules: Annotated[list[str], NoDecode] = []
+    enabled_modules: Annotated[list[str], NoDecode] = ["app.modules.dice"]
 
     @field_validator("cors_origins", mode="before")
     @classmethod
