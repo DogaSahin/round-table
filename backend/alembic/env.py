@@ -16,6 +16,10 @@ from app.modules.dice.models import (  # noqa: F401 - exercises models import su
     RollHistory,
     SavedRoll,
 )
+from app.modules.sessions.models import (  # noqa: F401 - exercises models import surface
+    GameSession,
+    SessionLog,
+)
 
 config = context.config
 if config.config_file_name is not None:
