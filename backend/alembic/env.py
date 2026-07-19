@@ -21,6 +21,7 @@ from app.modules.factions.models import (  # noqa: F401 - exercises models impor
     FactionActivity,
     FactionClock,
 )
+from app.modules.npcs.models import Npc  # noqa: F401 - exercises models import surface
 from app.modules.sessions.models import (  # noqa: F401 - exercises models import surface
     GameSession,
     SessionLog,
