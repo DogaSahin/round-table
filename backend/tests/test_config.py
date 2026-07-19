@@ -10,7 +10,7 @@ def test_defaults_when_no_env_set(monkeypatch) -> None:
     get_settings.cache_clear()
     settings = get_settings()
     assert settings.database_url == "sqlite:///./data/roundtable.db"
-    assert settings.enabled_modules == ["app.modules.dice"]
+    assert settings.enabled_modules == ["app.modules.dice", "app.modules.sessions"]
     assert settings.cors_origins == ["http://localhost:5173"]
 
 
