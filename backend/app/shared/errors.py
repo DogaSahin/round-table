@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
@@ -54,7 +55,27 @@ def _app_error_handler(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+def _request_validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Maps FastAPI's own body-validation errors (raised automatically when a
+    Pydantic request schema's field constraints fail, e.g. min_length) onto
+    the same shared envelope as Validation(AppError), so callers never need
+    to special-case this path vs. an application-raised Validation error."""
+    error = cast(RequestValidationError, exc)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": Validation.code,
+                "message": "Request validation failed.",
+                "details": {"errors": error.errors()},
+            }
+        },
+    )
+
+
 def install_error_handlers(app: FastAPI) -> None:
-    """Registers the single handler that maps every AppError subclass to the
-    shared envelope. Call once from the app factory."""
+    """Registers the handlers that map every AppError subclass, and FastAPI's
+    own request-validation errors, to the shared envelope. Call once from the
+    app factory."""
     app.add_exception_handler(AppError, _app_error_handler)
+    app.add_exception_handler(RequestValidationError, _request_validation_error_handler)
