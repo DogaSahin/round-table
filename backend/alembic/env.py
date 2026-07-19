@@ -26,6 +26,12 @@ from app.modules.sessions.models import (  # noqa: F401 - exercises models impor
     GameSession,
     SessionLog,
 )
+from app.modules.wiki.models import (  # noqa: F401 - exercises models import surface
+    Tag,
+    WikiLink,
+    WikiPage,
+    WikiPageTag,
+)
 
 config = context.config
 if config.config_file_name is not None:
