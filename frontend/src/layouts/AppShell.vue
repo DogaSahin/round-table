@@ -4,6 +4,9 @@
   <div class="app-shell">
     <header class="app-shell__header">
       <span class="app-shell__title">Round Table</span>
+      <nav class="app-shell__nav">
+        <router-link to="/dice">Dice</router-link>
+      </nav>
     </header>
     <main class="app-shell__content">
       <router-view />
