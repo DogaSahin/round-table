@@ -43,7 +43,7 @@ def _link_out(link: WikiLink) -> LinkOut:
 
 
 def _detail_out(db: Session, page: WikiPage) -> PageDetailOut:
-    links = db.query(WikiLink).filter_by(source_page_id=page.id).all()
+    links = service.page_links(db, page.id)
     return PageDetailOut(
         id=page.id,
         title=page.title,

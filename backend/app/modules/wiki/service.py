@@ -69,6 +69,10 @@ def page_tags(db: Session, page_id: int) -> list[Tag]:
     )
 
 
+def page_links(db: Session, page_id: int) -> list[WikiLink]:
+    return db.query(WikiLink).filter_by(source_page_id=page_id).all()
+
+
 def unique_slug(db: Session, campaign_id: int, title: str) -> str:
     base = slugify(title)
     slug = base
