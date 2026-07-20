@@ -28,6 +28,7 @@ def test_encounter_defaults() -> None:
         assert encounter.active_combatant_id is None
     finally:
         session.close()
+        Base.metadata.drop_all(bind=engine)
 
 
 def test_combatant_defaults() -> None:
@@ -58,6 +59,7 @@ def test_combatant_defaults() -> None:
         assert combatant.token_id is None
     finally:
         session.close()
+        Base.metadata.drop_all(bind=engine)
 
 
 def test_encounter_cascade_delete_combatants() -> None:
@@ -93,3 +95,4 @@ def test_encounter_cascade_delete_combatants() -> None:
         assert found_combatant2 is None
     finally:
         session.close()
+        Base.metadata.drop_all(bind=engine)
