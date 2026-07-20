@@ -5,6 +5,7 @@ import DiceView from '@/modules/dice/DiceView.vue'
 import SessionsView from '@/modules/sessions/SessionsView.vue'
 import FactionsView from '@/modules/factions/FactionsView.vue'
 import NpcsView from '@/modules/npcs/NpcsView.vue'
+import WikiView from '@/modules/wiki/WikiView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
@@ -13,6 +14,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/sessions', name: 'sessions', component: SessionsView },
   { path: '/factions', name: 'factions', component: FactionsView },
   { path: '/npcs', name: 'npcs', component: NpcsView },
+  { path: '/wiki', name: 'wiki', component: WikiView },
 ]
 
 export const router = createRouter({

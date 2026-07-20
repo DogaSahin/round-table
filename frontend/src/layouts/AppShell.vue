@@ -9,6 +9,7 @@
         <router-link to="/sessions">Sessions</router-link>
         <router-link to="/factions">Factions</router-link>
         <router-link to="/npcs">NPCs</router-link>
+        <router-link to="/wiki">Wiki</router-link>
       </nav>
     </header>
     <main class="app-shell__content">
