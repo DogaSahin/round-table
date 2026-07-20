@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.realtime.routes import router as realtime_router
@@ -30,6 +31,8 @@ def create_app() -> FastAPI:
         app.include_router(router)
 
     app.include_router(realtime_router)
+
+    app.mount("/media", StaticFiles(directory=str(settings.media_dir)), name="media")
 
     @app.get("/health")
     def health() -> dict[str, str]:

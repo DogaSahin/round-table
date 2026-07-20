@@ -12,6 +12,7 @@ dependencies = [
     "pydantic-settings==2.7.0",
     "python-multipart==0.0.20",
     "markdown==3.7",
+    "Pillow==11.3.0",
 ]
 
 [project.optional-dependencies]
