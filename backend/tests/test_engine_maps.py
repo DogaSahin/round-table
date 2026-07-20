@@ -148,13 +148,13 @@ def test_path_distance_backward_leg():
 def test_path_distance_multiple_rules():
     """Path distance works correctly with different diagonal rules."""
     pts = [(0, 0), (100, 100)]
-    # chebyshev: max(100/70, 100/70) = max(1, 1) = 1, rounded = 1 * 5 = 5
-    # (actually this depends on rounding in path_distance)
-    # euclidean: sqrt(1.428^2 + 1.428^2) ≈ 2.02 → 2 * 5 = 10
+    # dx_sq = dy_sq = round(100/70) = round(1.42857) = 1 square each way
+    # chebyshev: max(1, 1) * 5 = 5
+    # euclidean: round(sqrt(1^2 + 1^2)) * 5 = round(1.414) * 5 = 1 * 5 = 5
     # manhattan: (1 + 1) * 5 = 10
-    assert path_distance(pts, 5, "chebyshev", 70) >= 0
-    assert path_distance(pts, 5, "euclidean", 70) >= 0
-    assert path_distance(pts, 5, "manhattan", 70) >= 0
+    assert path_distance(pts, 5, "chebyshev", 70) == 5
+    assert path_distance(pts, 5, "euclidean", 70) == 5
+    assert path_distance(pts, 5, "manhattan", 70) == 10
 
 
 # =============================================================================
