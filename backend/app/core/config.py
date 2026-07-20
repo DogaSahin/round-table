@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         "app.modules.sessions",
         "app.modules.factions",
         "app.modules.npcs",
+        "app.modules.wiki",
     ]
 
     @field_validator("cors_origins", mode="before")
