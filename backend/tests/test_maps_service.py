@@ -275,6 +275,68 @@ def test_move_token_without_snap_keeps_raw_value() -> None:
         Base.metadata.drop_all(bind=engine)
 
 
+def test_update_token_applies_non_none_fields_including_falsy_values() -> None:
+    """Proves update_token actually writes non-None values (not just skips None),
+    and specifically that falsy-but-intentional values (is_pc=False,
+    visible_to_players=False, hp_current=0) are applied rather than dropped —
+    a regression to `if value:` instead of `if value is not None:` would silently
+    ignore exactly these and still pass a test that only ever calls it with None."""
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        campaign = _make_campaign(db)
+        map_row = service.create_map(db, campaign.id, "Map")
+        token = service.create_token(
+            db,
+            map_row,
+            name="A",
+            layer="tokens",
+            kind="disc",
+            size_squares=1,
+            color="#fff",
+            is_pc=True,
+            visible_to_players=True,
+            npc_id=None,
+            combatant_id=None,
+        )
+        token.hp_current = 5
+        token.hp_max = 10
+        token.hp_visible_to_players = True
+        db.commit()
+
+        updated = service.update_token(
+            db,
+            token,
+            name="Renamed",
+            layer="dm",
+            size_squares=2,
+            color="#000000",
+            is_pc=False,
+            visible_to_players=False,
+            npc_id=7,
+            combatant_id=9,
+            hp_current=0,
+            hp_max=1,
+            hp_visible_to_players=False,
+            status_markers=None,
+        )
+
+        assert updated.name == "Renamed"
+        assert updated.layer == "dm"
+        assert updated.size_squares == 2
+        assert updated.color == "#000000"
+        assert updated.is_pc is False
+        assert updated.visible_to_players is False
+        assert updated.npc_id == 7
+        assert updated.combatant_id == 9
+        assert updated.hp_current == 0
+        assert updated.hp_max == 1
+        assert updated.hp_visible_to_players is False
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
 def test_status_markers_roundtrip_via_update_token() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
