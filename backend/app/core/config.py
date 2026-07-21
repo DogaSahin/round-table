@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "app.modules.npcs",
         "app.modules.wiki",
         "app.modules.combat",
+        "app.modules.maps",
     ]
 
     @field_validator("cors_origins", mode="before")

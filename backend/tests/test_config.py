@@ -17,6 +17,7 @@ def test_defaults_when_no_env_set(monkeypatch) -> None:
         "app.modules.npcs",
         "app.modules.wiki",
         "app.modules.combat",
+        "app.modules.maps",
     ]
     assert settings.cors_origins == ["http://localhost:5173"]
 
