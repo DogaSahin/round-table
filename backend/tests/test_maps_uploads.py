@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import io
+import struct
+import zlib
 
 import pytest
 from PIL import Image
@@ -21,6 +23,24 @@ def _image_bytes(fmt: str, size: tuple[int, int] = (10, 10)) -> bytes:
     buf = io.BytesIO()
     image.save(buf, format=fmt)
     return buf.getvalue()
+
+
+def _png_chunk(tag: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+
+def _decompression_bomb_png(width: int, height: int) -> bytes:
+    """A minimal, structurally valid PNG whose IHDR *declares* an enormous
+    pixel count with no real pixel data behind it. Pillow's decompression-
+    bomb check runs against the declared size right after IHDR is parsed —
+    before IDAT is ever decoded — so this triggers PIL.Image.DecompressionBombError
+    without needing gigabytes of actual pixel data."""
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    ihdr = _png_chunk(b"IHDR", ihdr_data)
+    idat = _png_chunk(b"IDAT", b"")
+    iend = _png_chunk(b"IEND", b"")
+    return sig + ihdr + idat + iend
 
 
 def _solid_png_of_size(width: int, height: int) -> bytes:
@@ -90,6 +110,17 @@ def test_store_image_rejects_unparseable_bytes_without_leaking_pillow_exception(
 
     with pytest.raises(Validation):
         store_image(garbage, "file.png", "maps", tmp_path, MAX_MAP_IMAGE_BYTES)
+
+
+def test_store_image_rejects_decompression_bomb_without_leaking_pillow_exception(tmp_path) -> None:
+    """A tiny (57-byte) PNG whose header declares a 50000x50000 image must
+    raise Validation, not a raw PIL.Image.DecompressionBombError — that
+    exception is not a subclass of OSError/SyntaxError/ValueError and
+    previously propagated straight through as an unhandled 500."""
+    bomb = _decompression_bomb_png(50000, 50000)
+
+    with pytest.raises(Validation):
+        store_image(bomb, "bomb.png", "maps", tmp_path, MAX_MAP_IMAGE_BYTES)
 
 
 def test_store_map_image_enforces_25mb_cap(tmp_path) -> None:

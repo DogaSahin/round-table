@@ -41,14 +41,22 @@ def store_image(
             image.verify()
     except UnidentifiedImageError as exc:
         raise Validation("Unreadable image.") from exc
-    except (OSError, SyntaxError, ValueError) as exc:
+    except (
+        OSError,
+        SyntaxError,
+        ValueError,
+        Image.DecompressionBombError,
+    ) as exc:
         # Image.open() succeeding (header parses, .size is readable) does not guarantee
         # the pixel data is intact — .verify() can raise a range of exception types for
         # truncated/corrupt bytes depending on format and where the corruption is, not
-        # just UnidentifiedImageError. Catch broadly here (this is the only place in the
-        # call chain validating untrusted upload bytes) and translate all of it into the
-        # same clean Validation error rather than leaking a raw Pillow/stdlib exception
-        # as an unhandled 500.
+        # just UnidentifiedImageError. DecompressionBombError is a separate case: a tiny
+        # file whose header *declares* an enormous pixel count can raise it straight out
+        # of Image.open() itself, before .size is even reachable — not a subclass of any
+        # of the other caught types, so it needs its own entry, not just a broader OSError
+        # catch. Catch broadly here (this is the only place in the call chain validating
+        # untrusted upload bytes) and translate all of it into the same clean Validation
+        # error rather than leaking a raw Pillow/stdlib exception as an unhandled 500.
         raise Validation("Unreadable image.") from exc
 
     dest_path.write_bytes(data)
