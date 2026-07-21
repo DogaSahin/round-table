@@ -11,6 +11,7 @@
         <router-link to="/npcs">NPCs</router-link>
         <router-link to="/wiki">Wiki</router-link>
         <router-link to="/combat">Combat</router-link>
+        <router-link to="/maps">Maps</router-link>
       </nav>
     </header>
     <main class="app-shell__content">

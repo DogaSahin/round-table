@@ -7,6 +7,7 @@ import FactionsView from '@/modules/factions/FactionsView.vue'
 import NpcsView from '@/modules/npcs/NpcsView.vue'
 import WikiView from '@/modules/wiki/WikiView.vue'
 import CombatView from '@/modules/combat/CombatView.vue'
+import MapsView from '@/modules/maps/MapsView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: HomeView },
@@ -17,6 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/npcs', name: 'npcs', component: NpcsView },
   { path: '/wiki', name: 'wiki', component: WikiView },
   { path: '/combat', name: 'combat', component: CombatView },
+  { path: '/maps', name: 'maps', component: MapsView },
 ]
 
 export const router = createRouter({
