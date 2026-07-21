@@ -83,4 +83,55 @@ describe('MapsView', () => {
     expect(canvas.exists()).toBe(true)
     expect((canvas.props('map') as MapDetailOut).id).toBe(1)
   })
+
+  it('adds a token to the selected map and refreshes the detail', async () => {
+    vi.spyOn(mapsApi, 'listMaps').mockResolvedValue([
+      { id: 1, name: 'Goblin Warren', is_active: false },
+    ])
+    const detail = makeMapDetail()
+    const detailWithToken = makeMapDetail({
+      tokens: [
+        {
+          id: 1,
+          layer: 'tokens',
+          kind: 'disc',
+          x: 70,
+          y: 70,
+          size_squares: 1,
+          color: '#888888',
+          image_path: null,
+          name: 'Goblin',
+          hp_current: null,
+          hp_max: null,
+          hp_visible_to_players: false,
+          visible_to_players: true,
+          status_markers: [],
+          is_pc: false,
+          npc_id: null,
+          combatant_id: null,
+        },
+      ],
+    })
+    vi.spyOn(mapsApi, 'fetchMap')
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValueOnce(detailWithToken)
+    vi.spyOn(mapsApi, 'addToken').mockResolvedValue(detailWithToken.tokens[0])
+
+    const wrapper = mount(MapsView)
+    await flushPromises()
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Goblin Warren')
+      ?.trigger('click')
+    await flushPromises()
+
+    await wrapper.find('input[placeholder="Token name"]').setValue('Goblin')
+    await wrapper.find('form.maps-add-token-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(mapsApi.addToken).toHaveBeenCalledWith(1, { name: 'Goblin' })
+    const canvas = wrapper.findComponent({ name: 'MapCanvas' })
+    expect((canvas.props('map') as MapDetailOut).tokens).toHaveLength(1)
+  })
 })

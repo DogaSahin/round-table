@@ -3,6 +3,7 @@
   import { ApiError } from '@/api/client'
   import {
     activateMap,
+    addToken,
     createMap,
     deleteMap,
     fetchMap,
@@ -21,6 +22,7 @@
   const maps = ref<MapListItemOut[]>([])
   const selected = ref<MapDetailOut | null>(null)
   const newMapName = ref('')
+  const newTokenName = ref('')
   const errorMessage = ref<string | null>(null)
   const tool = ref<Tool>('select')
   const snapEnabled = ref(true)
@@ -125,6 +127,18 @@
     selected.value = map
   }
 
+  async function submitAddToken() {
+    if (selected.value === null) return
+    errorMessage.value = null
+    try {
+      await addToken(selected.value.id, { name: newTokenName.value })
+      newTokenName.value = ''
+      selected.value = await fetchMap(selected.value.id)
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
   onMounted(loadMaps)
 </script>
 
@@ -157,6 +171,11 @@
         Upload map image
         <input type="file" accept="image/*" @change="submitImageUpload" />
       </label>
+
+      <form class="maps-add-token-form" @submit.prevent="submitAddToken">
+        <input v-model="newTokenName" type="text" placeholder="Token name" />
+        <button type="submit">Add Token</button>
+      </form>
 
       <div class="maps-toolbar">
         <label v-for="t in ['select', 'measure', 'reveal-rect', 'hide-rect'] as Tool[]" :key="t">
