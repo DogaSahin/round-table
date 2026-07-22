@@ -32,3 +32,6 @@ Thumbs.db
 
 # Agent scratch state (subagent-driven-development progress ledger)
 .superpowers/
+
+# Local architecture/spec/progress notes — not published in the repo
+/docs/
