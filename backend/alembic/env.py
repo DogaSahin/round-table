@@ -12,6 +12,9 @@ from app.core.models import AppSetting, Campaign  # noqa: F401  (registers metad
 from app.core.realtime.broadcast import (
     BroadcastState,  # noqa: F401 - exercises models import surface
 )
+from app.modules.bestiary.models import (  # noqa: F401 - exercises models import surface
+    BestiaryMonster,
+)
 from app.modules.combat.models import (  # noqa: F401 - exercises models import surface
     Combatant,
     Encounter,
