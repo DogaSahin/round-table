@@ -5,10 +5,13 @@ from pydantic import ValidationError
 
 from app.shared.statblock import (
     AbilityScores,
+    Action,
     DamageComponent,
+    LegendaryAction,
     SavingThrowEffect,
     SavingThrowProficiency,
     SkillProficiency,
+    SpecialAbility,
     Speed,
 )
 
@@ -67,3 +70,71 @@ def test_damage_component_round_trip() -> None:
 def test_saving_throw_effect_round_trip() -> None:
     effect = SavingThrowEffect(ability="dexterity", dc=15, effect_on_save="half")
     assert effect.model_dump() == {"ability": "dexterity", "dc": 15, "effect_on_save": "half"}
+
+
+def test_action_minimal_requires_only_id_name_description() -> None:
+    action = Action(id="bite", name="Bite", description="Melee Weapon Attack.")
+    assert action.damage == []
+    assert action.save is None
+    assert action.multiattack_refs == []
+
+
+def test_action_with_damage_and_attack_bonus() -> None:
+    action = Action(
+        id="claw",
+        name="Claw",
+        description="Melee Weapon Attack: +7 to hit, reach 5 ft., one target.",
+        attack_bonus=7,
+        reach_or_range="5 ft.",
+        target="one target",
+        damage=[DamageComponent(dice="2d6+4", damage_type="slashing")],
+    )
+    assert action.damage[0].damage_type == "slashing"
+
+
+def test_action_with_save_effect() -> None:
+    action = Action(
+        id="breath",
+        name="Fire Breath",
+        description="The dragon exhales fire in a 60-foot cone.",
+        save=SavingThrowEffect(ability="dexterity", dc=17, effect_on_save="half"),
+        damage=[DamageComponent(dice="16d6", damage_type="fire")],
+        recharge="5-6",
+    )
+    assert action.save is not None
+    assert action.save.dc == 17
+    assert action.recharge == "5-6"
+
+
+def test_action_multiattack_refs() -> None:
+    action = Action(
+        id="multiattack",
+        name="Multiattack",
+        description="The creature makes two claw attacks and one bite attack.",
+        multiattack_refs=["claw", "bite"],
+    )
+    assert action.multiattack_refs == ["claw", "bite"]
+
+
+def test_legendary_action_defaults_to_cost_one() -> None:
+    legendary = LegendaryAction(
+        id="tail-attack", name="Tail Attack", description="One tail attack."
+    )
+    assert legendary.cost == 1
+
+
+def test_legendary_action_custom_cost() -> None:
+    legendary = LegendaryAction(
+        id="wing-attack", name="Wing Attack", description="Beats wings.", cost=2
+    )
+    assert legendary.cost == 2
+
+
+def test_special_ability_round_trip() -> None:
+    ability = SpecialAbility(
+        id="legendary-resistance",
+        name="Legendary Resistance",
+        description="If the creature fails a saving throw, it can choose to succeed instead.",
+        uses_per_day=3,
+    )
+    assert ability.uses_per_day == 3

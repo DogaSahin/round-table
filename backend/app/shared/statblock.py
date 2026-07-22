@@ -44,3 +44,29 @@ class SavingThrowEffect(BaseModel):
     ability: AbilityName
     dc: int = Field(ge=0)
     effect_on_save: str = Field(min_length=1)
+
+
+class Action(BaseModel):
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    description: str
+    attack_bonus: int | None = None
+    reach_or_range: str | None = None
+    target: str | None = None
+    damage: list[DamageComponent] = Field(default_factory=list)
+    save: SavingThrowEffect | None = None
+    recharge: str | None = None
+    uses_per_day: int | None = Field(default=None, ge=1)
+    multiattack_refs: list[str] = Field(default_factory=list)
+
+
+class LegendaryAction(Action):
+    cost: int = Field(default=1, ge=1)
+
+
+class SpecialAbility(BaseModel):
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    description: str
+    recharge: str | None = None
+    uses_per_day: int | None = Field(default=None, ge=1)
