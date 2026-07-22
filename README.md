@@ -6,10 +6,9 @@ FastAPI + Vue application.
 
 > **Status: single-tenant, actively being rebuilt onto a hosted architecture.** Today the app is a
 > single shared campaign with no accounts, logins, or multi-game isolation — that's the next epic
-> (`identity`/`games`/`authz`, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)). Every module
-> below is DM-facing only for now: combat and maps both expose read-only, filtered "player view"
-> API endpoints and their own WebSocket topics on the backend, but no player-facing frontend
-> consumes them yet.
+> (`identity`/`games`/`authz`). Every module below is DM-facing only for now: combat and maps both
+> expose read-only, filtered "player view" API endpoints and their own WebSocket topics on the
+> backend, but no player-facing frontend consumes them yet.
 
 ## Features
 
@@ -33,9 +32,10 @@ FastAPI + Vue application.
 - **Real-time:** native WebSockets — a small in-process topic-based pub/sub hub in
   `backend/app/core/realtime/`.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how the codebase is organized (the
-module/service-layer boundaries, the pure `engine/` rules layer, and the planned hosting pivot) and
-[`docs/Hexforge_Spec.md`](docs/Hexforge_Spec.md) for the full target-system feature spec.
+The codebase is a package-by-feature modular monolith with a service layer over a pure,
+system-agnostic rules core (`engine/`): feature modules never import each other directly, shared
+logic pushes down into `engine/`/`content/`/`generation/`, and cross-cutting concerns (auth, DB,
+realtime) live in `core/`.
 
 ## Running it in dev
 
@@ -71,7 +71,8 @@ npm run lint && npm run format:check && npm run build && npm run test
 .venv/Scripts/ruff check . && .venv/Scripts/ruff format --check . && .venv/Scripts/mypy app && .venv/Scripts/pytest
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same two gates on every push and pull request to `main`.
+CI (`.github/workflows/ci.yml`) runs the same two gates on every push and pull request to `main` and
+`dev`.
 
 ## License
 
