@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -21,6 +31,11 @@ class BestiaryMonster(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(220), nullable=False)
     statblock: Mapped[str] = mapped_column(Text, nullable=False)
+    # Denormalized from statblock.creature_type / statblock.challenge_rating,
+    # kept in sync by service.py on every create/update, so list/search/filter
+    # run as real SQL WHERE/ORDER BY instead of parsing the JSON blob per row.
+    creature_type: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    challenge_rating: Mapped[float] = mapped_column(Float, index=True, nullable=False)
     image_url: Mapped[str | None] = mapped_column(String(500))
     is_favorite: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="0", nullable=False
