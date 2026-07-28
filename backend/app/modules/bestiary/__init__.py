@@ -1,4 +1,9 @@
-"""Custom-monster bestiary (Feature 1). Campaign-scoped; models only so far —
-register() and route wiring land in Phase 2, along with adding this module to
-core/config.py's enabled_modules list.
-"""
+# backend/app/modules/bestiary/__init__.py
+from __future__ import annotations
+
+from app.core.registry import Registry
+from app.modules.bestiary.routes import router
+
+
+def register(registry: Registry) -> None:
+    registry.add_router(router)
