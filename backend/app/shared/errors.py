@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -57,9 +58,18 @@ def _app_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 def _request_validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Maps FastAPI's own body-validation errors (raised automatically when a
-    Pydantic request schema's field constraints fail, e.g. min_length) onto
-    the same shared envelope as Validation(AppError), so callers never need
-    to special-case this path vs. an application-raised Validation error."""
+    Pydantic request schema's field constraints fail, e.g. min_length, or a
+    custom `field_validator` raises ValueError) onto the same shared envelope
+    as Validation(AppError), so callers never need to special-case this path
+    vs. an application-raised Validation error.
+
+    `error.errors()` isn't always JSON-serializable as-is: a custom
+    `field_validator` that raises `ValueError` produces an entry with
+    `ctx.error` set to the actual exception instance, which the default JSON
+    encoder can't handle. Run it through `jsonable_encoder` (same as
+    FastAPI's own default handler) — the human-readable `msg` field already
+    carries the exception's message, so nothing is lost.
+    """
     error = cast(RequestValidationError, exc)
     return JSONResponse(
         status_code=422,
@@ -67,7 +77,7 @@ def _request_validation_error_handler(request: Request, exc: Exception) -> JSONR
             "error": {
                 "code": Validation.code,
                 "message": "Request validation failed.",
-                "details": {"errors": error.errors()},
+                "details": {"errors": jsonable_encoder(error.errors())},
             }
         },
     )
