@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import BestiaryView from './BestiaryView.vue'
 import * as bestiaryApi from './api'
-import type { BestiaryMonsterListItem } from './api'
+import type { BestiaryMonsterListItem, Statblock } from './api'
 
 const RAT: BestiaryMonsterListItem = {
   id: 1,
@@ -22,6 +22,40 @@ const OWLBEAR: BestiaryMonsterListItem = {
   challenge_rating: 3,
   is_favorite: false,
   image_url: null,
+}
+
+const STATBLOCK: Statblock = {
+  size: 'Small',
+  creature_type: 'beast',
+  subtype: null,
+  alignment: 'unaligned',
+  armor_class: 12,
+  armor_class_notes: null,
+  hit_points: 7,
+  hit_dice: '2d6',
+  speed: { walk: 30, fly: null, swim: null, climb: null, burrow: null, hover: false },
+  ability_scores: {
+    strength: 8,
+    dexterity: 15,
+    constitution: 11,
+    intelligence: 2,
+    wisdom: 10,
+    charisma: 4,
+  },
+  saving_throws: [],
+  skills: [],
+  damage_vulnerabilities: [],
+  damage_resistances: [],
+  damage_immunities: [],
+  condition_immunities: [],
+  senses: [],
+  languages: [],
+  challenge_rating: 0.125,
+  experience_points: 25,
+  special_abilities: [],
+  actions: [],
+  legendary_actions: [],
+  legendary_actions_per_turn: null,
 }
 
 let wrapper: VueWrapper | null = null
@@ -52,7 +86,7 @@ describe('BestiaryView', () => {
     await flushPromises()
     listSpy.mockClear()
 
-    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await wrapper.find('.bestiary-filters__favorites-chip').trigger('click')
     await flushPromises()
 
     expect(listSpy).toHaveBeenCalledTimes(1)
@@ -83,7 +117,7 @@ describe('BestiaryView', () => {
     expect(wrapper.text()).toContain('No monsters match')
 
     listSpy.mockClear()
-    await wrapper.find('input[type="checkbox"]').setValue(true)
+    await wrapper.find('.bestiary-filters__favorites-chip').trigger('click')
     await flushPromises()
 
     await wrapper
@@ -92,6 +126,40 @@ describe('BestiaryView', () => {
       ?.trigger('click')
     await flushPromises()
 
-    expect((wrapper.find('input[type="checkbox"]').element as HTMLInputElement).checked).toBe(false)
+    expect(wrapper.find('.bestiary-filters__favorites-chip').attributes('aria-pressed')).toBe(
+      'false',
+    )
+  })
+
+  it('removes a card from the grid when unfavorited while the favorites filter is active', async () => {
+    const listSpy = vi
+      .spyOn(bestiaryApi, 'listBestiary')
+      .mockResolvedValue([{ ...RAT, is_favorite: true }])
+    vi.spyOn(bestiaryApi, 'unfavoriteMonster').mockResolvedValue({
+      id: 1,
+      name: 'Giant Rat',
+      slug: 'giant-rat',
+      statblock: STATBLOCK,
+      image_url: null,
+      is_favorite: false,
+      cloned_from_content_id: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    })
+
+    wrapper = mount(BestiaryView)
+    await flushPromises()
+
+    await wrapper.find('.bestiary-filters__favorites-chip').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Giant Rat')
+
+    listSpy.mockClear()
+
+    await wrapper.find('.monster-card__favorite').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Giant Rat')
+    expect(listSpy).not.toHaveBeenCalled()
   })
 })

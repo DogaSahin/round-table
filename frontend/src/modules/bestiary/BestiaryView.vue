@@ -77,6 +77,12 @@
     openMonsterId.value = null
   }
 
+  function onFavoriteChanged(monsterId: number, isFavorite: boolean) {
+    if (favoritesOnly.value && !isFavorite) {
+      monsters.value = monsters.value.filter((m) => m.id !== monsterId)
+    }
+  }
+
   watchDebounced(search, loadMonsters, { debounce: 300 })
   watch([creatureType, crMin, crMax, favoritesOnly, sort], loadMonsters)
 
@@ -92,6 +98,15 @@
     <p v-if="errorMessage">Error: {{ errorMessage }}</p>
 
     <form class="bestiary-filters" @submit.prevent>
+      <button
+        type="button"
+        class="bestiary-filters__favorites-chip"
+        :aria-pressed="favoritesOnly"
+        @click="favoritesOnly = !favoritesOnly"
+      >
+        ★ Favorites
+      </button>
+
       <input v-model="search" type="text" placeholder="Search" />
 
       <select v-model="creatureType">
@@ -112,11 +127,6 @@
           {{ opt.label }}
         </option>
       </select>
-
-      <label>
-        <input v-model="favoritesOnly" type="checkbox" />
-        Favorites only
-      </label>
 
       <select v-model="sort">
         <option value="name">Name</option>
@@ -139,6 +149,7 @@
         :item="m"
         @open="openMonster"
         @error="handleError"
+        @favorite-changed="onFavoriteChanged"
       />
     </div>
 
@@ -152,6 +163,19 @@
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 1rem;
+  }
+
+  .bestiary-filters__favorites-chip {
+    border: 1px solid #ccc;
+    border-radius: 999px;
+    background: none;
+    padding: 0.25rem 0.75rem;
+    cursor: pointer;
+  }
+
+  .bestiary-filters__favorites-chip[aria-pressed='true'] {
+    background: #ffd700;
+    border-color: #e6c200;
   }
 
   .bestiary-grid {
