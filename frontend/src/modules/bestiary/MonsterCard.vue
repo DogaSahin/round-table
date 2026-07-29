@@ -15,6 +15,7 @@
   const emit = defineEmits<{
     (e: 'open', monsterId: number): void
     (e: 'error', err: unknown): void
+    (e: 'favorite-changed', monsterId: number, isFavorite: boolean): void
   }>()
 
   const isFavorite = ref(props.item.is_favorite)
@@ -27,12 +28,16 @@
   )
 
   async function toggleFavorite() {
+    const next = !isFavorite.value
+    isFavorite.value = next
+    emit('favorite-changed', props.item.id, next)
     try {
-      const updated = isFavorite.value
-        ? await unfavoriteMonster(props.item.id)
-        : await favoriteMonster(props.item.id)
+      const updated = next
+        ? await favoriteMonster(props.item.id)
+        : await unfavoriteMonster(props.item.id)
       isFavorite.value = updated.is_favorite
     } catch (err) {
+      isFavorite.value = !next
       emit('error', err)
     }
   }

@@ -102,4 +102,54 @@ describe('MonsterCard', () => {
     expect(bestiaryApi.unfavoriteMonster).toHaveBeenCalledWith(1)
     expect(wrapper.find('.monster-card__favorite').text()).toBe('☆')
   })
+
+  it('flips the star synchronously before the network call resolves', async () => {
+    let resolvePromise: (value: BestiaryMonsterDetail) => void = () => {}
+    vi.spyOn(bestiaryApi, 'favoriteMonster').mockReturnValue(
+      new Promise((resolve) => {
+        resolvePromise = resolve
+      }),
+    )
+
+    const wrapper = mount(MonsterCard, { props: { item: ITEM } })
+    await wrapper.find('.monster-card__favorite').trigger('click')
+
+    expect(wrapper.find('.monster-card__favorite').text()).toBe('★')
+
+    resolvePromise(detailWith(true))
+    await flushPromises()
+  })
+
+  it('rolls back the star and emits error when the toggle fails', async () => {
+    let rejectPromise: (err: unknown) => void = () => {}
+    const error = new Error('network error')
+    vi.spyOn(bestiaryApi, 'favoriteMonster').mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectPromise = reject
+      }),
+    )
+
+    const wrapper = mount(MonsterCard, { props: { item: ITEM } })
+    await wrapper.find('.monster-card__favorite').trigger('click')
+
+    // Optimistic flip has already happened, before the call has even resolved/rejected.
+    expect(wrapper.find('.monster-card__favorite').text()).toBe('★')
+
+    rejectPromise(error)
+    await flushPromises()
+
+    expect(wrapper.find('.monster-card__favorite').text()).toBe('☆')
+    expect(wrapper.emitted('error')).toEqual([[error]])
+  })
+
+  it('emits favorite-changed immediately with the new state', async () => {
+    vi.spyOn(bestiaryApi, 'favoriteMonster').mockResolvedValue(detailWith(true))
+
+    const wrapper = mount(MonsterCard, { props: { item: ITEM } })
+    await wrapper.find('.monster-card__favorite').trigger('click')
+
+    expect(wrapper.emitted('favorite-changed')).toEqual([[1, true]])
+
+    await flushPromises()
+  })
 })
