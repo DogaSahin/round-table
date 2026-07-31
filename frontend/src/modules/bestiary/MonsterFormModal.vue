@@ -8,9 +8,77 @@
     fetchMonster,
     formatChallengeRating,
     updateMonster,
+    type AbilityName,
     type BestiaryMonsterDetail,
     type Statblock,
   } from './api'
+  import TagListField from './TagListField.vue'
+
+  const SKILL_OPTIONS = [
+    'Acrobatics',
+    'Animal Handling',
+    'Arcana',
+    'Athletics',
+    'Deception',
+    'History',
+    'Insight',
+    'Intimidation',
+    'Investigation',
+    'Medicine',
+    'Nature',
+    'Perception',
+    'Performance',
+    'Persuasion',
+    'Religion',
+    'Sleight of Hand',
+    'Stealth',
+    'Survival',
+  ]
+
+  const DAMAGE_TYPE_OPTIONS = [
+    'acid',
+    'bludgeoning',
+    'cold',
+    'fire',
+    'force',
+    'lightning',
+    'necrotic',
+    'piercing',
+    'poison',
+    'psychic',
+    'radiant',
+    'slashing',
+    'thunder',
+  ].map((value) => ({ value, label: value }))
+
+  const CONDITION_OPTIONS = [
+    'blinded',
+    'charmed',
+    'deafened',
+    'exhaustion',
+    'frightened',
+    'grappled',
+    'incapacitated',
+    'invisible',
+    'paralyzed',
+    'petrified',
+    'poisoned',
+    'prone',
+    'restrained',
+    'stunned',
+    'unconscious',
+  ].map((value) => ({ value, label: value }))
+
+  const SAVING_THROW_ABILITIES: { key: AbilityName; label: string }[] = [
+    { key: 'strength', label: 'STR' },
+    { key: 'dexterity', label: 'DEX' },
+    { key: 'constitution', label: 'CON' },
+    { key: 'intelligence', label: 'INT' },
+    { key: 'wisdom', label: 'WIS' },
+    { key: 'charisma', label: 'CHA' },
+  ]
+
+  const SKILL_CUSTOM_OPTION = '__custom__'
 
   const props = defineProps<{
     monsterId: number | null
@@ -81,9 +149,29 @@
     charisma: number
     challengeRating: number
     experiencePoints: number
+    savingThrows: Record<AbilityName, number | null>
+    skills: Array<{ skill: string; bonus: number | null }>
+    damageVulnerabilities: string[]
+    damageResistances: string[]
+    damageImmunities: string[]
+    conditionImmunities: string[]
+    senses: string[]
+    languages: string[]
   }
 
   function formFromStatblock(name: string, sb: Statblock): FormState {
+    const savingThrows: Record<AbilityName, number | null> = {
+      strength: null,
+      dexterity: null,
+      constitution: null,
+      intelligence: null,
+      wisdom: null,
+      charisma: null,
+    }
+    for (const st of sb.saving_throws) {
+      savingThrows[st.ability] = st.bonus
+    }
+
     return {
       name,
       size: sb.size,
@@ -108,6 +196,14 @@
       charisma: sb.ability_scores.charisma,
       challengeRating: sb.challenge_rating,
       experiencePoints: sb.experience_points,
+      savingThrows,
+      skills: sb.skills.map((s) => ({ skill: s.skill, bonus: s.bonus })),
+      damageVulnerabilities: [...sb.damage_vulnerabilities],
+      damageResistances: [...sb.damage_resistances],
+      damageImmunities: [...sb.damage_immunities],
+      conditionImmunities: [...sb.condition_immunities],
+      senses: [...sb.senses],
+      languages: [...sb.languages],
     }
   }
 
@@ -117,6 +213,7 @@
   const errorMessage = ref<string | null>(null)
   const saving = ref(false)
   const baseLoaded = ref(false)
+  const customSkillRows = ref<boolean[]>([])
 
   const crOptions = computed(() =>
     ALLOWED_CHALLENGE_RATINGS.map((cr) => ({ value: cr, label: formatChallengeRating(cr) })),
@@ -130,6 +227,7 @@
     if (monsterId === null) {
       baseStatblock.value = defaultStatblock()
       form.value = formFromStatblock('', baseStatblock.value)
+      customSkillRows.value = []
       baseLoaded.value = true
       return
     }
@@ -137,6 +235,7 @@
       const detail = await fetchMonster(monsterId)
       baseStatblock.value = detail.statblock
       form.value = formFromStatblock(detail.name, detail.statblock)
+      customSkillRows.value = detail.statblock.skills.map((s) => !SKILL_OPTIONS.includes(s.skill))
       baseLoaded.value = true
     } catch (err) {
       errorMessage.value = err instanceof ApiError ? err.message : 'Unknown error'
@@ -151,6 +250,33 @@
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKeydown)
   })
+
+  function addSkillRow() {
+    form.value.skills.push({ skill: '', bonus: null })
+    customSkillRows.value.push(false)
+  }
+
+  function removeSkillRow(index: number) {
+    form.value.skills.splice(index, 1)
+    customSkillRows.value.splice(index, 1)
+  }
+
+  function onSkillSelectChange(index: number, value: string) {
+    if (value === SKILL_CUSTOM_OPTION) {
+      customSkillRows.value[index] = true
+      form.value.skills[index].skill = ''
+    } else {
+      customSkillRows.value[index] = false
+      form.value.skills[index].skill = value
+    }
+  }
+
+  function skillOptionsFor(index: number): string[] {
+    const usedElsewhere = new Set(
+      form.value.skills.filter((_, i) => i !== index).map((s) => s.skill),
+    )
+    return SKILL_OPTIONS.filter((opt) => !usedElsewhere.has(opt))
+  }
 
   function validateForm(f: FormState): Record<string, string> {
     const validationErrors: Record<string, string> = {}
@@ -211,6 +337,18 @@
       },
       challenge_rating: f.challengeRating,
       experience_points: f.experiencePoints,
+      saving_throws: (Object.entries(f.savingThrows) as [AbilityName, number | null][])
+        .filter(([, bonus]) => bonus !== null && Number.isFinite(bonus))
+        .map(([ability, bonus]) => ({ ability, bonus: bonus as number })),
+      skills: f.skills
+        .filter((s) => s.skill.trim() && Number.isFinite(s.bonus))
+        .map((s) => ({ skill: s.skill.trim(), bonus: s.bonus as number })),
+      damage_vulnerabilities: f.damageVulnerabilities.map((v) => v.trim()).filter(Boolean),
+      damage_resistances: f.damageResistances.map((v) => v.trim()).filter(Boolean),
+      damage_immunities: f.damageImmunities.map((v) => v.trim()).filter(Boolean),
+      condition_immunities: f.conditionImmunities.map((v) => v.trim()).filter(Boolean),
+      senses: f.senses.map((v) => v.trim()).filter(Boolean),
+      languages: f.languages.map((v) => v.trim()).filter(Boolean),
     }
   }
 
@@ -364,6 +502,67 @@
           </label>
         </fieldset>
 
+        <fieldset>
+          <legend>Saving Throws</legend>
+          <label v-for="ability in SAVING_THROW_ABILITIES" :key="ability.key">
+            {{ ability.label }}
+            <input
+              v-model.number="form.savingThrows[ability.key]"
+              type="number"
+              :name="`savingThrow-${ability.key}`"
+            />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Skills</legend>
+          <div v-for="(row, index) in form.skills" :key="index" class="skill-row">
+            <select
+              v-if="!customSkillRows[index]"
+              :name="`skill-${index}`"
+              :value="row.skill"
+              @change="onSkillSelectChange(index, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="" disabled>Select skill…</option>
+              <option v-for="opt in skillOptionsFor(index)" :key="opt" :value="opt">
+                {{ opt }}
+              </option>
+              <option :value="SKILL_CUSTOM_OPTION">Other (custom)...</option>
+            </select>
+            <input v-else v-model="row.skill" type="text" :name="`skill-${index}`" />
+            <input v-model.number="row.bonus" type="number" :name="`skillBonus-${index}`" />
+            <button type="button" @click="removeSkillRow(index)">×</button>
+          </div>
+          <button type="button" @click="addSkillRow">+ Add skill</button>
+        </fieldset>
+
+        <TagListField
+          v-model="form.damageVulnerabilities"
+          label="Damage Vulnerabilities"
+          field-name="damageVulnerabilities"
+          :options="DAMAGE_TYPE_OPTIONS"
+        />
+        <TagListField
+          v-model="form.damageResistances"
+          label="Damage Resistances"
+          field-name="damageResistances"
+          :options="DAMAGE_TYPE_OPTIONS"
+        />
+        <TagListField
+          v-model="form.damageImmunities"
+          label="Damage Immunities"
+          field-name="damageImmunities"
+          :options="DAMAGE_TYPE_OPTIONS"
+        />
+        <TagListField
+          v-model="form.conditionImmunities"
+          label="Condition Immunities"
+          field-name="conditionImmunities"
+          :options="CONDITION_OPTIONS"
+        />
+        <TagListField v-model="form.senses" label="Senses" field-name="senses" />
+        <TagListField v-model="form.languages" label="Languages" field-name="languages" />
+
         <label>
           Challenge Rating
           <select v-model="form.challengeRating" name="challengeRating">
@@ -411,5 +610,11 @@
     color: #c00;
     display: block;
     font-size: 0.85rem;
+  }
+
+  .skill-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
   }
 </style>

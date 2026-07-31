@@ -23,13 +23,13 @@ const EXISTING_STATBLOCK: Statblock = {
     charisma: 4,
   },
   saving_throws: [{ ability: 'wisdom', bonus: 2 }],
-  skills: [],
+  skills: [{ skill: 'Perception', bonus: 4 }],
   damage_vulnerabilities: [],
-  damage_resistances: [],
+  damage_resistances: ['fire'],
   damage_immunities: [],
-  condition_immunities: [],
-  senses: [],
-  languages: [],
+  condition_immunities: ['poisoned'],
+  senses: ['darkvision 60 ft.'],
+  languages: ['Common'],
   challenge_rating: 0.125,
   experience_points: 25,
   special_abilities: [],
@@ -84,6 +84,13 @@ describe('MonsterFormModal', () => {
     expect(
       (wrapper.find('select[name="challengeRating"]').element as HTMLSelectElement).value,
     ).toBe('0')
+    expect(
+      (wrapper.find('input[name="savingThrow-strength"]').element as HTMLInputElement).value,
+    ).toBe('')
+    expect(wrapper.find('[name^="skill-"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Damage Vulnerabilities')
+    expect(wrapper.text()).toContain('Languages')
+    expect(wrapper.find('[name^="languages-"]').exists()).toBe(false)
   })
 
   it('pre-fills every visible field from a fetched monster in edit mode', async () => {
@@ -104,6 +111,30 @@ describe('MonsterFormModal', () => {
     expect(
       (wrapper.find('input[name="hitPoints"]').element as HTMLInputElement).valueAsNumber,
     ).toBe(7)
+    expect(
+      (wrapper.find('input[name="savingThrow-wisdom"]').element as HTMLInputElement).valueAsNumber,
+    ).toBe(2)
+    expect(
+      (wrapper.find('input[name="savingThrow-strength"]').element as HTMLInputElement).value,
+    ).toBe('')
+    expect((wrapper.find('select[name="skill-0"]').element as HTMLSelectElement).value).toBe(
+      'Perception',
+    )
+    expect(
+      (wrapper.find('input[name="skillBonus-0"]').element as HTMLInputElement).valueAsNumber,
+    ).toBe(4)
+    expect(
+      (wrapper.find('select[name="damageResistances-0"]').element as HTMLSelectElement).value,
+    ).toBe('fire')
+    expect(
+      (wrapper.find('select[name="conditionImmunities-0"]').element as HTMLSelectElement).value,
+    ).toBe('poisoned')
+    expect((wrapper.find('input[name="senses-0"]').element as HTMLInputElement).value).toBe(
+      'darkvision 60 ft.',
+    )
+    expect((wrapper.find('input[name="languages-0"]').element as HTMLInputElement).value).toBe(
+      'Common',
+    )
   })
 
   it('blocks submit and shows inline errors for missing required text fields', async () => {
@@ -170,8 +201,77 @@ describe('MonsterFormModal', () => {
     expect(payload.name).toBe('Test Monster')
     expect(payload.statblock.creature_type).toBe('beast')
     expect(payload.statblock.saving_throws).toEqual([])
+    expect(payload.statblock.skills).toEqual([])
     expect(payload.statblock.actions).toEqual([])
     expect(wrapper.emitted('saved')).toEqual([[created]])
+  })
+
+  it('includes saving throws, skills, and tag-list entries in a create submission', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+    await wrapper.find('input[name="savingThrow-dexterity"]').setValue('3')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add skill')
+      ?.trigger('click')
+    await wrapper.find('select[name="skill-0"]').setValue('Stealth')
+    await wrapper.find('input[name="skillBonus-0"]').setValue('5')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add Damage Resistances')
+      ?.trigger('click')
+    await wrapper.find('select[name="damageResistances-0"]').setValue('cold')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add Languages')
+      ?.trigger('click')
+    await wrapper.find('input[name="languages-0"]').setValue('Elvish')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    expect(payload.statblock.saving_throws).toEqual([{ ability: 'dexterity', bonus: 3 }])
+    expect(payload.statblock.skills).toEqual([{ skill: 'Stealth', bonus: 5 }])
+    expect(payload.statblock.damage_resistances).toEqual(['cold'])
+    expect(payload.statblock.languages).toEqual(['Elvish'])
+  })
+
+  it('drops incomplete skill and tag-list rows from the submitted payload without blocking submit', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add skill')
+      ?.trigger('click')
+    // Leave the skill row's select and bonus unfilled.
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add Languages')
+      ?.trigger('click')
+    // Leave the language row blank.
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    expect(payload.statblock.skills).toEqual([])
+    expect(payload.statblock.languages).toEqual([])
   })
 
   it('updates an existing monster, preserving fields the form does not expose', async () => {
@@ -190,9 +290,30 @@ describe('MonsterFormModal', () => {
     const [calledId, payload] = updateSpy.mock.calls[0]
     expect(calledId).toBe(1)
     expect(payload.name).toBe('Renamed Rat')
-    expect(payload.statblock?.saving_throws).toEqual(EXISTING_STATBLOCK.saving_throws)
     expect(payload.statblock?.actions).toEqual(EXISTING_STATBLOCK.actions)
+    expect(payload.statblock?.legendary_actions).toEqual(EXISTING_STATBLOCK.legendary_actions)
+    expect(payload.statblock?.special_abilities).toEqual(EXISTING_STATBLOCK.special_abilities)
+    expect(payload.statblock?.legendary_actions_per_turn).toEqual(
+      EXISTING_STATBLOCK.legendary_actions_per_turn,
+    )
     expect(wrapper.emitted('saved')).toEqual([[updated]])
+  })
+
+  it('submits a changed saving throw during edit, proving it is genuinely editable', async () => {
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue(EXISTING_DETAIL)
+    const updated: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Giant Rat' }
+    const updateSpy = vi.spyOn(bestiaryApi, 'updateMonster').mockResolvedValue(updated)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: 1 } })
+    await flushPromises()
+
+    await wrapper.find('input[name="savingThrow-wisdom"]').setValue('5')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    const [, payload] = updateSpy.mock.calls[0]
+    expect(payload.statblock?.saving_throws).toEqual([{ ability: 'wisdom', bonus: 5 }])
   })
 
   it('shows an error and does not emit saved when the save fails', async () => {
