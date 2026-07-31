@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import BestiaryView from './BestiaryView.vue'
 import * as bestiaryApi from './api'
-import type { BestiaryMonsterListItem, Statblock } from './api'
+import type { BestiaryMonsterDetail, BestiaryMonsterListItem, Statblock } from './api'
 
 const RAT: BestiaryMonsterListItem = {
   id: 1,
@@ -161,5 +161,80 @@ describe('BestiaryView', () => {
 
     expect(wrapper.text()).not.toContain('Giant Rat')
     expect(listSpy).not.toHaveBeenCalled()
+  })
+
+  it('opens the form modal in create mode when "+ New Monster" is clicked', async () => {
+    vi.spyOn(bestiaryApi, 'listBestiary').mockResolvedValue([])
+    wrapper = mount(BestiaryView)
+    await flushPromises()
+
+    await wrapper.find('.bestiary-new-monster').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.monster-form-modal__backdrop').exists()).toBe(true)
+    expect(wrapper.text()).toContain('New Monster')
+  })
+
+  it('closes the form modal and refreshes the roster and type options when a monster is saved', async () => {
+    const listSpy = vi.spyOn(bestiaryApi, 'listBestiary').mockResolvedValue([])
+    const created: BestiaryMonsterDetail = {
+      id: 3,
+      name: 'New Beast',
+      slug: 'new-beast',
+      statblock: STATBLOCK,
+      image_url: null,
+      is_favorite: false,
+      cloned_from_content_id: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    }
+    vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(BestiaryView)
+    await flushPromises()
+
+    await wrapper.find('.bestiary-new-monster').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('input[name="name"]').setValue('New Beast')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+    listSpy.mockClear()
+
+    await wrapper.find('.monster-form-modal__form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.find('.monster-form-modal__backdrop').exists()).toBe(false)
+    // Once for loadMonsters, once for loadTypes' unfiltered fetch.
+    expect(listSpy).toHaveBeenCalledTimes(2)
+    expect(listSpy).toHaveBeenCalledWith({})
+  })
+
+  it('opens the edit form pre-filled and closes the detail modal when Edit is clicked', async () => {
+    vi.spyOn(bestiaryApi, 'listBestiary').mockResolvedValue([RAT])
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue({
+      id: 1,
+      name: 'Giant Rat',
+      slug: 'giant-rat',
+      statblock: STATBLOCK,
+      image_url: null,
+      is_favorite: false,
+      cloned_from_content_id: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    })
+
+    wrapper = mount(BestiaryView)
+    await flushPromises()
+
+    await wrapper.find('.monster-card__body').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.monster-detail-modal__backdrop').exists()).toBe(true)
+
+    await wrapper.find('.monster-detail-modal__edit').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.monster-detail-modal__backdrop').exists()).toBe(false)
+    expect(wrapper.find('.monster-form-modal__backdrop').exists()).toBe(true)
+    expect((wrapper.find('input[name="name"]').element as HTMLInputElement).value).toBe('Giant Rat')
   })
 })

@@ -12,6 +12,7 @@
   } from './api'
   import MonsterCard from './MonsterCard.vue'
   import MonsterDetailModal from './MonsterDetailModal.vue'
+  import MonsterFormModal from './MonsterFormModal.vue'
 
   const DEFAULT_SORT: BestiarySort = 'name'
 
@@ -19,6 +20,8 @@
   const availableTypes = ref<string[]>([])
   const errorMessage = ref<string | null>(null)
   const openMonsterId = ref<number | null>(null)
+  const showFormModal = ref(false)
+  const editingMonsterId = ref<number | null>(null)
 
   const search = ref('')
   const creatureType = ref('')
@@ -83,6 +86,27 @@
     }
   }
 
+  function openCreateForm() {
+    editingMonsterId.value = null
+    showFormModal.value = true
+  }
+
+  function openEditForm(monsterId: number) {
+    openMonsterId.value = null
+    editingMonsterId.value = monsterId
+    showFormModal.value = true
+  }
+
+  function closeFormModal() {
+    showFormModal.value = false
+  }
+
+  async function onMonsterSaved() {
+    showFormModal.value = false
+    await loadMonsters()
+    await loadTypes()
+  }
+
   watchDebounced(search, loadMonsters, { debounce: 300 })
   watch([creatureType, crMin, crMax, favoritesOnly, sort], loadMonsters)
 
@@ -96,6 +120,10 @@
   <section>
     <h1>Bestiary</h1>
     <p v-if="errorMessage">Error: {{ errorMessage }}</p>
+
+    <button type="button" class="bestiary-new-monster" @click="openCreateForm">
+      + New Monster
+    </button>
 
     <form class="bestiary-filters" @submit.prevent>
       <button
@@ -153,11 +181,27 @@
       />
     </div>
 
-    <MonsterDetailModal :monster-id="openMonsterId" @close="closeMonster" @error="handleError" />
+    <MonsterDetailModal
+      :monster-id="openMonsterId"
+      @close="closeMonster"
+      @error="handleError"
+      @edit="openEditForm"
+    />
+
+    <MonsterFormModal
+      v-if="showFormModal"
+      :monster-id="editingMonsterId"
+      @saved="onMonsterSaved"
+      @close="closeFormModal"
+    />
   </section>
 </template>
 
 <style scoped>
+  .bestiary-new-monster {
+    margin-bottom: 1rem;
+  }
+
   .bestiary-filters {
     display: flex;
     flex-wrap: wrap;
