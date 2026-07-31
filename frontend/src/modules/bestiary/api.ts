@@ -178,3 +178,30 @@ const CHALLENGE_RATING_FRACTIONS: Record<number, string> = {
 export function formatChallengeRating(cr: number): string {
   return CHALLENGE_RATING_FRACTIONS[cr] ?? String(cr)
 }
+
+export interface BestiaryMonsterWritePayload {
+  name: string
+  statblock: Statblock
+  image_url?: string | null
+}
+
+export function createMonster(
+  payload: BestiaryMonsterWritePayload,
+): Promise<BestiaryMonsterDetail> {
+  return apiFetch<BestiaryMonsterDetail>('/api/bestiary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateMonster(
+  monsterId: number,
+  payload: Partial<BestiaryMonsterWritePayload>,
+): Promise<BestiaryMonsterDetail> {
+  return apiFetch<BestiaryMonsterDetail>(`/api/bestiary/${monsterId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
