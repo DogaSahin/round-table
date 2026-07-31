@@ -9,6 +9,7 @@
 
   const emit = defineEmits<{
     (e: 'close'): void
+    (e: 'edit', monsterId: number): void
     (e: 'error', err: unknown): void
   }>()
 
@@ -24,6 +25,10 @@
 
   function onKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') emit('close')
+  }
+
+  function handleEdit() {
+    if (props.monsterId !== null) emit('edit', props.monsterId)
   }
 
   watch(
@@ -51,6 +56,7 @@
       <button type="button" class="monster-detail-modal__close" @click="emit('close')">
         Close
       </button>
+      <button type="button" class="monster-detail-modal__edit" @click="handleEdit">Edit</button>
       <template v-if="detail">
         <h2>{{ detail.name }}</h2>
         <p>

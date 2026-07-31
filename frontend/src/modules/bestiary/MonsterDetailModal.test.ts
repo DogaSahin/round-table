@@ -101,4 +101,13 @@ describe('MonsterDetailModal', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('emits edit with the monster id when Edit is clicked', async () => {
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue(DETAIL)
+    wrapper = mount(MonsterDetailModal, { props: { monsterId: 1 } })
+    await flushPromises()
+
+    await wrapper.find('.monster-detail-modal__edit').trigger('click')
+    expect(wrapper.emitted('edit')).toEqual([[1]])
+  })
 })
