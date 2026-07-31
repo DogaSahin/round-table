@@ -207,4 +207,33 @@ describe('MonsterFormModal', () => {
     expect(wrapper.text()).toContain('Error:')
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
+
+  it('blocks submit and shows an error when the edit-mode detail fetch fails', async () => {
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockRejectedValue(new Error('network blip'))
+    const updateSpy = vi.spyOn(bestiaryApi, 'updateMonster')
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: 1 } })
+    await flushPromises()
+
+    await wrapper.find('input[name="name"]').setValue('Renamed Rat')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateSpy).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Could not load monster details. Please close and try again.')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it('blocks submit and shows the negative-number error when a numeric field is cleared', async () => {
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster')
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+    await wrapper.find('input[name="armorClass"]').setValue('')
+    await wrapper.find('form').trigger('submit.prevent')
+
+    expect(wrapper.text()).toContain('Armor class cannot be negative.')
+    expect(createSpy).not.toHaveBeenCalled()
+  })
 })

@@ -116,6 +116,7 @@
   const errors = ref<Record<string, string>>({})
   const errorMessage = ref<string | null>(null)
   const saving = ref(false)
+  const baseLoaded = ref(false)
 
   const crOptions = computed(() =>
     ALLOWED_CHALLENGE_RATINGS.map((cr) => ({ value: cr, label: formatChallengeRating(cr) })),
@@ -129,12 +130,14 @@
     if (monsterId === null) {
       baseStatblock.value = defaultStatblock()
       form.value = formFromStatblock('', baseStatblock.value)
+      baseLoaded.value = true
       return
     }
     try {
       const detail = await fetchMonster(monsterId)
       baseStatblock.value = detail.statblock
       form.value = formFromStatblock(detail.name, detail.statblock)
+      baseLoaded.value = true
     } catch (err) {
       errorMessage.value = err instanceof ApiError ? err.message : 'Unknown error'
     }
@@ -156,9 +159,13 @@
     if (!f.creatureType.trim()) validationErrors.creatureType = 'Type is required.'
     if (!f.alignment.trim()) validationErrors.alignment = 'Alignment is required.'
     if (!f.hitDice.trim()) validationErrors.hitDice = 'Hit dice is required.'
-    if (f.armorClass < 0) validationErrors.armorClass = 'Armor class cannot be negative.'
-    if (f.hitPoints < 0) validationErrors.hitPoints = 'Hit points cannot be negative.'
-    if (f.experiencePoints < 0) {
+    if (!Number.isFinite(f.armorClass) || f.armorClass < 0) {
+      validationErrors.armorClass = 'Armor class cannot be negative.'
+    }
+    if (!Number.isFinite(f.hitPoints) || f.hitPoints < 0) {
+      validationErrors.hitPoints = 'Hit points cannot be negative.'
+    }
+    if (!Number.isFinite(f.experiencePoints) || f.experiencePoints < 0) {
       validationErrors.experiencePoints = 'Experience points cannot be negative.'
     }
     const abilityScores: Array<[string, number]> = [
@@ -208,6 +215,13 @@
   }
 
   async function submit() {
+    if (saving.value) return
+
+    if (props.monsterId !== null && !baseLoaded.value) {
+      errorMessage.value = 'Could not load monster details. Please close and try again.'
+      return
+    }
+
     const validationErrors = validateForm(form.value)
     errors.value = validationErrors
     if (Object.keys(validationErrors).length > 0) return
