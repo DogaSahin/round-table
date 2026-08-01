@@ -50,6 +50,9 @@
 
   const model = defineModel<ActionFormState>({ required: true })
 
+  // Scalar/per-row fields below mutate `model.value` in place, relying on the parent binding the
+  // same live reactive object via `v-model="form.actions[index]"` (not a copy); add/remove-row and
+  // multiattack-toggle instead reassign `model.value` so `update:modelValue` actually fires.
   function isDamageTypeUnmatched(damageType: string): boolean {
     if (damageType === '') return false
     return !props.damageTypeOptions.some((opt) => opt.value === damageType)

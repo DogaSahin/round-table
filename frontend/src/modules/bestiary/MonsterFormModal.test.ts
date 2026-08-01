@@ -93,6 +93,46 @@ const EXISTING_DETAIL: BestiaryMonsterDetail = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
+// One real action ("bite") plus a "multiattack" action whose multiattack_refs includes both a
+// resolvable id and an id that matches no action in the list (orphaned/unresolvable data).
+const STATBLOCK_WITH_ORPHAN_REF: Statblock = {
+  ...EXISTING_STATBLOCK,
+  actions: [
+    {
+      id: 'bite',
+      name: 'Bite',
+      description: 'A bite attack.',
+      attack_bonus: null,
+      reach_or_range: null,
+      target: null,
+      damage: [],
+      save: null,
+      recharge: null,
+      uses_per_day: null,
+      multiattack_refs: [],
+    },
+    {
+      id: 'multiattack',
+      name: 'Multiattack',
+      description: 'Two bite attacks.',
+      attack_bonus: null,
+      reach_or_range: null,
+      target: null,
+      damage: [],
+      save: null,
+      recharge: null,
+      uses_per_day: null,
+      multiattack_refs: ['bite', 'nonexistent-action'],
+    },
+  ],
+  legendary_actions: [],
+}
+
+const DETAIL_WITH_ORPHAN_REF: BestiaryMonsterDetail = {
+  ...EXISTING_DETAIL,
+  statblock: STATBLOCK_WITH_ORPHAN_REF,
+}
+
 let wrapper: VueWrapper | null = null
 
 afterEach(() => {
@@ -411,6 +451,93 @@ describe('MonsterFormModal', () => {
     const payload = createSpy.mock.calls[0][0]
     const multiattackAction = payload.statblock.actions.find((a) => a.name === 'Multiattack')
     expect(multiattackAction?.multiattack_refs).toEqual(['bite'])
+  })
+
+  it('keeps a multiattack reference resolved to the correct action after it is renamed', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    const addAction = () =>
+      wrapper!
+        .findAll('button')
+        .find((b) => b.text() === '+ Add action')
+        ?.trigger('click')
+
+    await addAction()
+    await addAction()
+
+    const editors = wrapper.findAllComponents(ActionEditor)
+    await editors[0].find('input[name="name"]').setValue('Bite')
+    await editors[0].find('textarea[name="description"]').setValue('A bite attack.')
+    await editors[1].find('input[name="name"]').setValue('Multiattack')
+    await editors[1].find('textarea[name="description"]').setValue('Two bite attacks.')
+
+    // Check the reference to "Bite" while it is still named "Bite" — the checkbox tracks the
+    // action's clientKey, not its name, so this must survive the rename below.
+    const multiattackEditor = wrapper.findAllComponents(ActionEditor)[1]
+    await multiattackEditor.find('input[name^="multiattack-"]').setValue(true)
+
+    // Rename the referenced action *after* the reference was checked.
+    await wrapper
+      .findAllComponents(ActionEditor)[0]
+      .find('input[name="name"]')
+      .setValue('Vicious Bite')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    const multiattackAction = payload.statblock.actions.find((a) => a.name === 'Multiattack')
+    expect(multiattackAction?.multiattack_refs).toEqual(['vicious-bite'])
+  })
+
+  it('includes a non-default legendary action cost in a create submission', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add legendary action')
+      ?.trigger('click')
+
+    const legendaryEditor = wrapper.findComponent(ActionEditor)
+    await legendaryEditor.find('input[name="name"]').setValue('Tail Swipe')
+    await legendaryEditor.find('textarea[name="description"]').setValue('A swipe of the tail.')
+    await legendaryEditor.find('input[name="cost"]').setValue('3')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    expect(payload.statblock.legendary_actions[0]?.cost).toBe(3)
+  })
+
+  it('silently drops an unresolvable multiattack reference when loading a monster', async () => {
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue(DETAIL_WITH_ORPHAN_REF)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: 1 } })
+    await flushPromises()
+
+    const actionEditors = wrapper.findAllComponents(ActionEditor)
+    expect(actionEditors).toHaveLength(2)
+
+    // The "Multiattack" action's multiattack_refs is ['bite', 'nonexistent-action']. Only 'bite'
+    // resolves to a real action, so exactly one checkbox should exist (and be checked) — the
+    // orphaned reference must not crash the load or surface as a phantom checked entry.
+    const multiattackEditor = actionEditors[1]
+    const multiattackCheckboxes = multiattackEditor.findAll('input[name^="multiattack-"]')
+    expect(multiattackCheckboxes).toHaveLength(1)
+    expect((multiattackCheckboxes[0].element as HTMLInputElement).checked).toBe(true)
   })
 
   it('blocks submit and shows an inline error when an action has no name', async () => {
