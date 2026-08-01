@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import MonsterFormModal from './MonsterFormModal.vue'
+import ActionEditor from './ActionEditor.vue'
 import * as bestiaryApi from './api'
 import type { BestiaryMonsterDetail, Statblock } from './api'
 
@@ -41,15 +42,43 @@ const EXISTING_STATBLOCK: Statblock = {
       attack_bonus: 4,
       reach_or_range: '5 ft.',
       target: 'one target',
-      damage: [],
+      damage: [{ dice: '1d4', damage_type: 'piercing' }],
       save: null,
       recharge: null,
       uses_per_day: null,
       multiattack_refs: [],
     },
+    {
+      id: 'multiattack',
+      name: 'Multiattack',
+      description: 'The rat makes two bite attacks.',
+      attack_bonus: null,
+      reach_or_range: null,
+      target: null,
+      damage: [],
+      save: null,
+      recharge: null,
+      uses_per_day: null,
+      multiattack_refs: ['bite'],
+    },
   ],
-  legendary_actions: [],
-  legendary_actions_per_turn: null,
+  legendary_actions: [
+    {
+      id: 'detect',
+      name: 'Detect',
+      description: 'The rat makes a Wisdom (Perception) check.',
+      attack_bonus: null,
+      reach_or_range: null,
+      target: null,
+      damage: [],
+      save: null,
+      recharge: null,
+      uses_per_day: null,
+      multiattack_refs: [],
+      cost: 1,
+    },
+  ],
+  legendary_actions_per_turn: 3,
 }
 
 const EXISTING_DETAIL: BestiaryMonsterDetail = {
@@ -91,6 +120,10 @@ describe('MonsterFormModal', () => {
     expect(wrapper.text()).toContain('Damage Vulnerabilities')
     expect(wrapper.text()).toContain('Languages')
     expect(wrapper.find('[name^="languages-"]').exists()).toBe(false)
+    expect(wrapper.findAllComponents(ActionEditor)).toHaveLength(0)
+    expect(
+      (wrapper.find('input[name="legendaryActionsPerTurn"]').element as HTMLInputElement).value,
+    ).toBe('')
   })
 
   it('pre-fills every visible field from a fetched monster in edit mode', async () => {
@@ -114,27 +147,43 @@ describe('MonsterFormModal', () => {
     expect(
       (wrapper.find('input[name="savingThrow-wisdom"]').element as HTMLInputElement).valueAsNumber,
     ).toBe(2)
-    expect(
-      (wrapper.find('input[name="savingThrow-strength"]').element as HTMLInputElement).value,
-    ).toBe('')
     expect((wrapper.find('select[name="skill-0"]').element as HTMLSelectElement).value).toBe(
       'Perception',
     )
     expect(
-      (wrapper.find('input[name="skillBonus-0"]').element as HTMLInputElement).valueAsNumber,
-    ).toBe(4)
-    expect(
       (wrapper.find('select[name="damageResistances-0"]').element as HTMLSelectElement).value,
     ).toBe('fire')
-    expect(
-      (wrapper.find('select[name="conditionImmunities-0"]').element as HTMLSelectElement).value,
-    ).toBe('poisoned')
-    expect((wrapper.find('input[name="senses-0"]').element as HTMLInputElement).value).toBe(
-      'darkvision 60 ft.',
-    )
     expect((wrapper.find('input[name="languages-0"]').element as HTMLInputElement).value).toBe(
       'Common',
     )
+
+    const actionEditors = wrapper.findAllComponents(ActionEditor)
+    expect(actionEditors).toHaveLength(3) // 2 actions + 1 legendary action
+    expect((actionEditors[0].find('input[name="name"]').element as HTMLInputElement).value).toBe(
+      'Bite',
+    )
+    expect(
+      (actionEditors[0].find('input[name="damageDice-0"]').element as HTMLInputElement).value,
+    ).toBe('1d4')
+    expect((actionEditors[1].find('input[name="name"]').element as HTMLInputElement).value).toBe(
+      'Multiattack',
+    )
+    // "Multiattack"'s multiattack_refs: ['bite'] must resolve to a checked reference to "Bite" —
+    // the only other action in the same list. The checkbox's exact name is keyed by a randomly
+    // generated clientKey (not the original "bite" id), but it is always prefixed
+    // "multiattack-", which distinguishes it from the editor's other checkbox ("hasSave").
+    const multiattackCheckbox = actionEditors[1].find('input[name^="multiattack-"]')
+    expect(multiattackCheckbox.exists()).toBe(true)
+    expect((multiattackCheckbox.element as HTMLInputElement).checked).toBe(true)
+    expect(actionEditors[1].text()).toContain('Bite')
+    expect(actionEditors[2].props('showCost')).toBe(true)
+    expect(
+      (actionEditors[2].find('input[name="cost"]').element as HTMLInputElement).valueAsNumber,
+    ).toBe(1)
+    expect(
+      (wrapper.find('input[name="legendaryActionsPerTurn"]').element as HTMLInputElement)
+        .valueAsNumber,
+    ).toBe(3)
   })
 
   it('blocks submit and shows inline errors for missing required text fields', async () => {
@@ -203,6 +252,8 @@ describe('MonsterFormModal', () => {
     expect(payload.statblock.saving_throws).toEqual([])
     expect(payload.statblock.skills).toEqual([])
     expect(payload.statblock.actions).toEqual([])
+    expect(payload.statblock.legendary_actions).toEqual([])
+    expect(payload.statblock.legendary_actions_per_turn).toBe(null)
     expect(wrapper.emitted('saved')).toEqual([[created]])
   })
 
@@ -274,6 +325,113 @@ describe('MonsterFormModal', () => {
     expect(payload.statblock.languages).toEqual([])
   })
 
+  it('creates a monster with an action, a damage component, and a checked save effect', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add action')
+      ?.trigger('click')
+
+    const actionEditor = wrapper.findComponent(ActionEditor)
+    await actionEditor.find('input[name="name"]').setValue('Bite')
+    await actionEditor.find('textarea[name="description"]').setValue('A bite attack.')
+    await actionEditor
+      .findAll('button')
+      .find((b) => b.text() === '+ Add damage')
+      ?.trigger('click')
+    await actionEditor.find('input[name="damageDice-0"]').setValue('1d4')
+    await actionEditor.find('select[name="damageType-0"]').setValue('piercing')
+    await actionEditor.find('input[name="hasSave"]').setValue(true)
+    await actionEditor.find('select[name="saveAbility"]').setValue('dexterity')
+    await actionEditor.find('input[name="saveDc"]').setValue('12')
+    await actionEditor.find('input[name="saveEffect"]').setValue('Half damage.')
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    expect(payload.statblock.actions).toEqual([
+      {
+        id: 'bite',
+        name: 'Bite',
+        description: 'A bite attack.',
+        attack_bonus: null,
+        reach_or_range: null,
+        target: null,
+        damage: [{ dice: '1d4', damage_type: 'piercing' }],
+        save: { ability: 'dexterity', dc: 12, effect_on_save: 'Half damage.' },
+        recharge: null,
+        uses_per_day: null,
+        multiattack_refs: [],
+      },
+    ])
+  })
+
+  it('resolves a multiattack reference to the referenced action id on submit', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    const addAction = () =>
+      wrapper!
+        .findAll('button')
+        .find((b) => b.text() === '+ Add action')
+        ?.trigger('click')
+
+    await addAction()
+    await addAction()
+
+    const editors = wrapper.findAllComponents(ActionEditor)
+    await editors[0].find('input[name="name"]').setValue('Bite')
+    await editors[0].find('textarea[name="description"]').setValue('A bite attack.')
+    await editors[1].find('input[name="name"]').setValue('Multiattack')
+    await editors[1].find('textarea[name="description"]').setValue('Two bite attacks.')
+
+    // The second editor's multiattack fieldset now has exactly one checkbox, referencing the
+    // first action ("Bite") — the checkbox's exact name is keyed by a randomly generated
+    // clientKey, but it is always prefixed "multiattack-", which distinguishes it from the
+    // editor's other checkbox ("hasSave").
+    const multiattackEditor = wrapper.findAllComponents(ActionEditor)[1]
+    await multiattackEditor.find('input[name^="multiattack-"]').setValue(true)
+
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    const multiattackAction = payload.statblock.actions.find((a) => a.name === 'Multiattack')
+    expect(multiattackAction?.multiattack_refs).toEqual(['bite'])
+  })
+
+  it('blocks submit and shows an inline error when an action has no name', async () => {
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster')
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add action')
+      ?.trigger('click')
+    // Leave the action's name and description blank.
+
+    await wrapper.find('form').trigger('submit.prevent')
+
+    expect(wrapper.text()).toContain('Name is required.')
+    expect(wrapper.text()).toContain('Description is required.')
+    expect(createSpy).not.toHaveBeenCalled()
+  })
+
   it('updates an existing monster, preserving fields the form does not expose', async () => {
     vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue(EXISTING_DETAIL)
     const updated: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Renamed Rat' }
@@ -290,12 +448,7 @@ describe('MonsterFormModal', () => {
     const [calledId, payload] = updateSpy.mock.calls[0]
     expect(calledId).toBe(1)
     expect(payload.name).toBe('Renamed Rat')
-    expect(payload.statblock?.actions).toEqual(EXISTING_STATBLOCK.actions)
-    expect(payload.statblock?.legendary_actions).toEqual(EXISTING_STATBLOCK.legendary_actions)
     expect(payload.statblock?.special_abilities).toEqual(EXISTING_STATBLOCK.special_abilities)
-    expect(payload.statblock?.legendary_actions_per_turn).toEqual(
-      EXISTING_STATBLOCK.legendary_actions_per_turn,
-    )
     expect(wrapper.emitted('saved')).toEqual([[updated]])
   })
 

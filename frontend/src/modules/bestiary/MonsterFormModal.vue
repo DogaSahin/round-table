@@ -9,10 +9,13 @@
     formatChallengeRating,
     updateMonster,
     type AbilityName,
+    type Action,
     type BestiaryMonsterDetail,
+    type LegendaryAction,
     type Statblock,
   } from './api'
   import TagListField from './TagListField.vue'
+  import ActionEditor from './ActionEditor.vue'
 
   const SKILL_OPTIONS = [
     'Acrobatics',
@@ -79,6 +82,29 @@
   ]
 
   const SKILL_CUSTOM_OPTION = '__custom__'
+
+  interface DamageRowState {
+    dice: string
+    damageType: string
+  }
+
+  interface ActionFormState {
+    clientKey: string
+    name: string
+    description: string
+    attackBonus: number | null
+    reachOrRange: string
+    target: string
+    damage: DamageRowState[]
+    hasSave: boolean
+    saveAbility: AbilityName | null
+    saveDc: number | null
+    saveEffect: string
+    recharge: string
+    usesPerDay: number | null
+    cost: number
+    multiattackRefs: string[]
+  }
 
   const props = defineProps<{
     monsterId: number | null
@@ -157,6 +183,96 @@
     conditionImmunities: string[]
     senses: string[]
     languages: string[]
+    actions: ActionFormState[]
+    legendaryActions: ActionFormState[]
+    legendaryActionsPerTurn: number | null
+  }
+
+  function slugify(text: string): string {
+    const slug = text
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    return slug || 'action'
+  }
+
+  function uniqueActionIds(names: string[]): string[] {
+    const counts = new Map<string, number>()
+    return names.map((name) => {
+      const base = slugify(name)
+      const seen = counts.get(base) ?? 0
+      counts.set(base, seen + 1)
+      return seen === 0 ? base : `${base}-${seen + 1}`
+    })
+  }
+
+  function actionListFromApi(actions: Action[]): ActionFormState[] {
+    const clientKeys = actions.map(() => crypto.randomUUID())
+    const idToClientKey = new Map<string, string>()
+    actions.forEach((action, i) => idToClientKey.set(action.id, clientKeys[i]))
+
+    return actions.map((action, i) => ({
+      clientKey: clientKeys[i],
+      name: action.name,
+      description: action.description,
+      attackBonus: action.attack_bonus,
+      reachOrRange: action.reach_or_range ?? '',
+      target: action.target ?? '',
+      damage: action.damage.map((d) => ({ dice: d.dice, damageType: d.damage_type })),
+      hasSave: action.save !== null,
+      saveAbility: action.save?.ability ?? null,
+      saveDc: action.save?.dc ?? null,
+      saveEffect: action.save?.effect_on_save ?? '',
+      recharge: action.recharge ?? '',
+      usesPerDay: action.uses_per_day,
+      cost: 1,
+      multiattackRefs: action.multiattack_refs
+        .map((ref) => idToClientKey.get(ref))
+        .filter((key): key is string => key !== undefined),
+    }))
+  }
+
+  function legendaryActionListFromApi(actions: LegendaryAction[]): ActionFormState[] {
+    const base = actionListFromApi(actions)
+    return base.map((form, i) => ({ ...form, cost: actions[i].cost }))
+  }
+
+  function actionListToApi(forms: ActionFormState[]): Action[] {
+    const ids = uniqueActionIds(forms.map((f) => f.name))
+    const clientKeyToId = new Map<string, string>()
+    forms.forEach((f, i) => clientKeyToId.set(f.clientKey, ids[i]))
+
+    return forms.map((f, i) => ({
+      id: ids[i],
+      name: f.name.trim(),
+      description: f.description.trim(),
+      attack_bonus: Number.isFinite(f.attackBonus) ? (f.attackBonus as number) : null,
+      reach_or_range: f.reachOrRange.trim() || null,
+      target: f.target.trim() || null,
+      damage: f.damage
+        .filter((d) => d.dice.trim() && d.damageType.trim())
+        .map((d) => ({ dice: d.dice.trim(), damage_type: d.damageType.trim() })),
+      save: f.hasSave
+        ? {
+            ability: f.saveAbility as AbilityName,
+            dc: f.saveDc as number,
+            effect_on_save: f.saveEffect.trim(),
+          }
+        : null,
+      recharge: f.recharge.trim() || null,
+      uses_per_day: Number.isFinite(f.usesPerDay) ? (f.usesPerDay as number) : null,
+      multiattack_refs: f.multiattackRefs
+        .map((key) => clientKeyToId.get(key))
+        .filter((id): id is string => id !== undefined),
+    }))
+  }
+
+  function legendaryActionListToApi(forms: ActionFormState[]): LegendaryAction[] {
+    return actionListToApi(forms).map((action, i) => ({
+      ...action,
+      cost: Number.isFinite(forms[i].cost) && forms[i].cost >= 1 ? forms[i].cost : 1,
+    }))
   }
 
   function formFromStatblock(name: string, sb: Statblock): FormState {
@@ -204,12 +320,17 @@
       conditionImmunities: [...sb.condition_immunities],
       senses: [...sb.senses],
       languages: [...sb.languages],
+      actions: actionListFromApi(sb.actions),
+      legendaryActions: legendaryActionListFromApi(sb.legendary_actions),
+      legendaryActionsPerTurn: sb.legendary_actions_per_turn,
     }
   }
 
   const baseStatblock = ref<Statblock>(defaultStatblock())
   const form = ref<FormState>(formFromStatblock('', baseStatblock.value))
   const errors = ref<Record<string, string>>({})
+  const actionErrors = ref<Record<string, string>[]>([])
+  const legendaryActionErrors = ref<Record<string, string>[]>([])
   const errorMessage = ref<string | null>(null)
   const saving = ref(false)
   const baseLoaded = ref(false)
@@ -228,6 +349,8 @@
       baseStatblock.value = defaultStatblock()
       form.value = formFromStatblock('', baseStatblock.value)
       customSkillRows.value = []
+      actionErrors.value = []
+      legendaryActionErrors.value = []
       baseLoaded.value = true
       return
     }
@@ -236,6 +359,8 @@
       baseStatblock.value = detail.statblock
       form.value = formFromStatblock(detail.name, detail.statblock)
       customSkillRows.value = detail.statblock.skills.map((s) => !SKILL_OPTIONS.includes(s.skill))
+      actionErrors.value = []
+      legendaryActionErrors.value = []
       baseLoaded.value = true
     } catch (err) {
       errorMessage.value = err instanceof ApiError ? err.message : 'Unknown error'
@@ -278,6 +403,69 @@
     return SKILL_OPTIONS.filter((opt) => !usedElsewhere.has(opt))
   }
 
+  function newActionFormState(): ActionFormState {
+    return {
+      clientKey: crypto.randomUUID(),
+      name: '',
+      description: '',
+      attackBonus: null,
+      reachOrRange: '',
+      target: '',
+      damage: [],
+      hasSave: false,
+      saveAbility: null,
+      saveDc: null,
+      saveEffect: '',
+      recharge: '',
+      usesPerDay: null,
+      cost: 1,
+      multiattackRefs: [],
+    }
+  }
+
+  function addAction() {
+    form.value.actions.push(newActionFormState())
+  }
+
+  function removeAction(index: number) {
+    form.value.actions.splice(index, 1)
+  }
+
+  function addLegendaryAction() {
+    form.value.legendaryActions.push(newActionFormState())
+  }
+
+  function removeLegendaryAction(index: number) {
+    form.value.legendaryActions.splice(index, 1)
+  }
+
+  function otherActionOptions(
+    list: ActionFormState[],
+    index: number,
+  ): { clientKey: string; name: string }[] {
+    return list.filter((_, i) => i !== index).map((a) => ({ clientKey: a.clientKey, name: a.name }))
+  }
+
+  function validateAction(f: ActionFormState): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (!f.name.trim()) errs.name = 'Name is required.'
+    if (!f.description.trim()) errs.description = 'Description is required.'
+    if (Number.isFinite(f.usesPerDay) && (f.usesPerDay as number) < 1) {
+      errs.usesPerDay = 'Uses per day must be at least 1.'
+    }
+    if (Number.isFinite(f.cost) && f.cost < 1) {
+      errs.cost = 'Cost must be at least 1.'
+    }
+    if (f.hasSave) {
+      if (!f.saveAbility) errs.saveAbility = 'Ability is required.'
+      if (!Number.isFinite(f.saveDc) || (f.saveDc as number) < 0) {
+        errs.saveDc = 'DC cannot be negative.'
+      }
+      if (!f.saveEffect.trim()) errs.saveEffect = 'Effect on save is required.'
+    }
+    return errs
+  }
+
   function validateForm(f: FormState): Record<string, string> {
     const validationErrors: Record<string, string> = {}
     if (!f.name.trim()) validationErrors.name = 'Name is required.'
@@ -293,6 +481,9 @@
     }
     if (!Number.isFinite(f.experiencePoints) || f.experiencePoints < 0) {
       validationErrors.experiencePoints = 'Experience points cannot be negative.'
+    }
+    if (Number.isFinite(f.legendaryActionsPerTurn) && (f.legendaryActionsPerTurn as number) < 1) {
+      validationErrors.legendaryActionsPerTurn = 'Must be at least 1.'
     }
     const abilityScores: Array<[string, number]> = [
       ['strength', f.strength],
@@ -349,6 +540,11 @@
       condition_immunities: f.conditionImmunities.map((v) => v.trim()).filter(Boolean),
       senses: f.senses.map((v) => v.trim()).filter(Boolean),
       languages: f.languages.map((v) => v.trim()).filter(Boolean),
+      actions: actionListToApi(f.actions),
+      legendary_actions: legendaryActionListToApi(f.legendaryActions),
+      legendary_actions_per_turn: Number.isFinite(f.legendaryActionsPerTurn)
+        ? (f.legendaryActionsPerTurn as number)
+        : null,
     }
   }
 
@@ -362,7 +558,18 @@
 
     const validationErrors = validateForm(form.value)
     errors.value = validationErrors
-    if (Object.keys(validationErrors).length > 0) return
+
+    const newActionErrors = form.value.actions.map((a) => validateAction(a))
+    const newLegendaryActionErrors = form.value.legendaryActions.map((a) => validateAction(a))
+    actionErrors.value = newActionErrors
+    legendaryActionErrors.value = newLegendaryActionErrors
+
+    const hasActionErrors = newActionErrors.some((e) => Object.keys(e).length > 0)
+    const hasLegendaryActionErrors = newLegendaryActionErrors.some((e) => Object.keys(e).length > 0)
+
+    if (Object.keys(validationErrors).length > 0 || hasActionErrors || hasLegendaryActionErrors) {
+      return
+    }
 
     errorMessage.value = null
     saving.value = true
@@ -562,6 +769,47 @@
         />
         <TagListField v-model="form.senses" label="Senses" field-name="senses" />
         <TagListField v-model="form.languages" label="Languages" field-name="languages" />
+
+        <fieldset>
+          <legend>Actions</legend>
+          <ActionEditor
+            v-for="(action, index) in form.actions"
+            :key="action.clientKey"
+            v-model="form.actions[index]"
+            :show-cost="false"
+            :other-action-names="otherActionOptions(form.actions, index)"
+            :errors="actionErrors[index] ?? {}"
+            :damage-type-options="DAMAGE_TYPE_OPTIONS"
+            @remove="removeAction(index)"
+          />
+          <button type="button" @click="addAction">+ Add action</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Legendary Actions</legend>
+          <label>
+            Legendary Actions Per Turn
+            <input
+              v-model.number="form.legendaryActionsPerTurn"
+              type="number"
+              name="legendaryActionsPerTurn"
+            />
+            <span v-if="errors.legendaryActionsPerTurn" class="field-error">
+              {{ errors.legendaryActionsPerTurn }}
+            </span>
+          </label>
+          <ActionEditor
+            v-for="(action, index) in form.legendaryActions"
+            :key="action.clientKey"
+            v-model="form.legendaryActions[index]"
+            :show-cost="true"
+            :other-action-names="otherActionOptions(form.legendaryActions, index)"
+            :errors="legendaryActionErrors[index] ?? {}"
+            :damage-type-options="DAMAGE_TYPE_OPTIONS"
+            @remove="removeLegendaryAction(index)"
+          />
+          <button type="button" @click="addLegendaryAction">+ Add legendary action</button>
+        </fieldset>
 
         <label>
           Challenge Rating
