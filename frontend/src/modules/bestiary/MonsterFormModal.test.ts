@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import MonsterFormModal from './MonsterFormModal.vue'
 import ActionEditor from './ActionEditor.vue'
+import SpecialAbilityEditor from './SpecialAbilityEditor.vue'
 import * as bestiaryApi from './api'
 import type { BestiaryMonsterDetail, Statblock } from './api'
 
@@ -33,7 +34,15 @@ const EXISTING_STATBLOCK: Statblock = {
   languages: ['Common'],
   challenge_rating: 0.125,
   experience_points: 25,
-  special_abilities: [],
+  special_abilities: [
+    {
+      id: 'keen-smell',
+      name: 'Keen Smell',
+      description: 'The rat has advantage on Wisdom (Perception) checks that rely on smell.',
+      recharge: null,
+      uses_per_day: null,
+    },
+  ],
   actions: [
     {
       id: 'bite',
@@ -161,6 +170,7 @@ describe('MonsterFormModal', () => {
     expect(wrapper.text()).toContain('Languages')
     expect(wrapper.find('[name^="languages-"]').exists()).toBe(false)
     expect(wrapper.findAllComponents(ActionEditor)).toHaveLength(0)
+    expect(wrapper.findAllComponents(SpecialAbilityEditor)).toHaveLength(0)
     expect(
       (wrapper.find('input[name="legendaryActionsPerTurn"]').element as HTMLInputElement).value,
     ).toBe('')
@@ -224,6 +234,12 @@ describe('MonsterFormModal', () => {
       (wrapper.find('input[name="legendaryActionsPerTurn"]').element as HTMLInputElement)
         .valueAsNumber,
     ).toBe(3)
+
+    const abilityEditors = wrapper.findAllComponents(SpecialAbilityEditor)
+    expect(abilityEditors).toHaveLength(1)
+    expect((abilityEditors[0].find('input[name="name"]').element as HTMLInputElement).value).toBe(
+      'Keen Smell',
+    )
   })
 
   it('blocks submit and shows inline errors for missing required text fields', async () => {
@@ -294,6 +310,7 @@ describe('MonsterFormModal', () => {
     expect(payload.statblock.actions).toEqual([])
     expect(payload.statblock.legendary_actions).toEqual([])
     expect(payload.statblock.legendary_actions_per_turn).toBe(null)
+    expect(payload.statblock.special_abilities).toEqual([])
     expect(wrapper.emitted('saved')).toEqual([[created]])
   })
 
@@ -559,24 +576,60 @@ describe('MonsterFormModal', () => {
     expect(createSpy).not.toHaveBeenCalled()
   })
 
-  it('updates an existing monster, preserving fields the form does not expose', async () => {
-    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue(EXISTING_DETAIL)
-    const updated: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Renamed Rat' }
-    const updateSpy = vi.spyOn(bestiaryApi, 'updateMonster').mockResolvedValue(updated)
+  it('includes a special ability in a create submission', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
 
-    wrapper = mount(MonsterFormModal, { props: { monsterId: 1 } })
-    await flushPromises()
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
 
-    await wrapper.find('input[name="name"]').setValue('Renamed Rat')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add special ability')
+      ?.trigger('click')
+
+    const abilityEditor = wrapper.findComponent(SpecialAbilityEditor)
+    await abilityEditor.find('input[name="name"]').setValue('Keen Smell')
+    await abilityEditor
+      .find('textarea[name="description"]')
+      .setValue('Advantage on smell-based Perception checks.')
+    await abilityEditor.find('input[name="recharge"]').setValue('5-6')
+    await abilityEditor.find('input[name="usesPerDay"]').setValue('2')
+
     await wrapper.find('form').trigger('submit.prevent')
     await flushPromises()
 
-    expect(updateSpy).toHaveBeenCalledTimes(1)
-    const [calledId, payload] = updateSpy.mock.calls[0]
-    expect(calledId).toBe(1)
-    expect(payload.name).toBe('Renamed Rat')
-    expect(payload.statblock?.special_abilities).toEqual(EXISTING_STATBLOCK.special_abilities)
-    expect(wrapper.emitted('saved')).toEqual([[updated]])
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    const payload = createSpy.mock.calls[0][0]
+    expect(payload.statblock.special_abilities).toEqual([
+      {
+        id: 'keen-smell',
+        name: 'Keen Smell',
+        description: 'Advantage on smell-based Perception checks.',
+        recharge: '5-6',
+        uses_per_day: 2,
+      },
+    ])
+  })
+
+  it('blocks submit and shows an inline error when a special ability has no name', async () => {
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster')
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === '+ Add special ability')
+      ?.trigger('click')
+    // Leave the special ability's name and description blank.
+
+    await wrapper.find('form').trigger('submit.prevent')
+
+    expect(wrapper.text()).toContain('Name is required.')
+    expect(wrapper.text()).toContain('Description is required.')
+    expect(createSpy).not.toHaveBeenCalled()
   })
 
   it('submits a changed saving throw during edit, proving it is genuinely editable', async () => {

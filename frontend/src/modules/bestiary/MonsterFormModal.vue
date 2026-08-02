@@ -12,10 +12,12 @@
     type Action,
     type BestiaryMonsterDetail,
     type LegendaryAction,
+    type SpecialAbility,
     type Statblock,
   } from './api'
   import TagListField from './TagListField.vue'
   import ActionEditor from './ActionEditor.vue'
+  import SpecialAbilityEditor from './SpecialAbilityEditor.vue'
 
   const SKILL_OPTIONS = [
     'Acrobatics',
@@ -106,6 +108,13 @@
     multiattackRefs: string[]
   }
 
+  interface SpecialAbilityFormState {
+    name: string
+    description: string
+    recharge: string
+    usesPerDay: number | null
+  }
+
   const props = defineProps<{
     monsterId: number | null
   }>()
@@ -186,6 +195,7 @@
     actions: ActionFormState[]
     legendaryActions: ActionFormState[]
     legendaryActionsPerTurn: number | null
+    specialAbilities: SpecialAbilityFormState[]
   }
 
   function slugify(text: string): string {
@@ -275,6 +285,26 @@
     }))
   }
 
+  function specialAbilityListFromApi(abilities: SpecialAbility[]): SpecialAbilityFormState[] {
+    return abilities.map((a) => ({
+      name: a.name,
+      description: a.description,
+      recharge: a.recharge ?? '',
+      usesPerDay: a.uses_per_day,
+    }))
+  }
+
+  function specialAbilityListToApi(forms: SpecialAbilityFormState[]): SpecialAbility[] {
+    const ids = uniqueActionIds(forms.map((f) => f.name))
+    return forms.map((f, i) => ({
+      id: ids[i],
+      name: f.name.trim(),
+      description: f.description.trim(),
+      recharge: f.recharge.trim() || null,
+      uses_per_day: Number.isFinite(f.usesPerDay) ? (f.usesPerDay as number) : null,
+    }))
+  }
+
   function formFromStatblock(name: string, sb: Statblock): FormState {
     const savingThrows: Record<AbilityName, number | null> = {
       strength: null,
@@ -323,6 +353,7 @@
       actions: actionListFromApi(sb.actions),
       legendaryActions: legendaryActionListFromApi(sb.legendary_actions),
       legendaryActionsPerTurn: sb.legendary_actions_per_turn,
+      specialAbilities: specialAbilityListFromApi(sb.special_abilities),
     }
   }
 
@@ -331,6 +362,7 @@
   const errors = ref<Record<string, string>>({})
   const actionErrors = ref<Record<string, string>[]>([])
   const legendaryActionErrors = ref<Record<string, string>[]>([])
+  const specialAbilityErrors = ref<Record<string, string>[]>([])
   const errorMessage = ref<string | null>(null)
   const saving = ref(false)
   const baseLoaded = ref(false)
@@ -351,6 +383,7 @@
       customSkillRows.value = []
       actionErrors.value = []
       legendaryActionErrors.value = []
+      specialAbilityErrors.value = []
       baseLoaded.value = true
       return
     }
@@ -361,6 +394,7 @@
       customSkillRows.value = detail.statblock.skills.map((s) => !SKILL_OPTIONS.includes(s.skill))
       actionErrors.value = []
       legendaryActionErrors.value = []
+      specialAbilityErrors.value = []
       baseLoaded.value = true
     } catch (err) {
       errorMessage.value = err instanceof ApiError ? err.message : 'Unknown error'
@@ -423,6 +457,10 @@
     }
   }
 
+  function newSpecialAbilityFormState(): SpecialAbilityFormState {
+    return { name: '', description: '', recharge: '', usesPerDay: null }
+  }
+
   function addAction() {
     form.value.actions.push(newActionFormState())
   }
@@ -437,6 +475,14 @@
 
   function removeLegendaryAction(index: number) {
     form.value.legendaryActions.splice(index, 1)
+  }
+
+  function addSpecialAbility() {
+    form.value.specialAbilities.push(newSpecialAbilityFormState())
+  }
+
+  function removeSpecialAbility(index: number) {
+    form.value.specialAbilities.splice(index, 1)
   }
 
   function otherActionOptions(
@@ -462,6 +508,16 @@
         errs.saveDc = 'DC cannot be negative.'
       }
       if (!f.saveEffect.trim()) errs.saveEffect = 'Effect on save is required.'
+    }
+    return errs
+  }
+
+  function validateSpecialAbility(f: SpecialAbilityFormState): Record<string, string> {
+    const errs: Record<string, string> = {}
+    if (!f.name.trim()) errs.name = 'Name is required.'
+    if (!f.description.trim()) errs.description = 'Description is required.'
+    if (Number.isFinite(f.usesPerDay) && (f.usesPerDay as number) < 1) {
+      errs.usesPerDay = 'Uses per day must be at least 1.'
     }
     return errs
   }
@@ -545,6 +601,7 @@
       legendary_actions_per_turn: Number.isFinite(f.legendaryActionsPerTurn)
         ? (f.legendaryActionsPerTurn as number)
         : null,
+      special_abilities: specialAbilityListToApi(f.specialAbilities),
     }
   }
 
@@ -561,13 +618,23 @@
 
     const newActionErrors = form.value.actions.map((a) => validateAction(a))
     const newLegendaryActionErrors = form.value.legendaryActions.map((a) => validateAction(a))
+    const newSpecialAbilityErrors = form.value.specialAbilities.map((a) =>
+      validateSpecialAbility(a),
+    )
     actionErrors.value = newActionErrors
     legendaryActionErrors.value = newLegendaryActionErrors
+    specialAbilityErrors.value = newSpecialAbilityErrors
 
     const hasActionErrors = newActionErrors.some((e) => Object.keys(e).length > 0)
     const hasLegendaryActionErrors = newLegendaryActionErrors.some((e) => Object.keys(e).length > 0)
+    const hasSpecialAbilityErrors = newSpecialAbilityErrors.some((e) => Object.keys(e).length > 0)
 
-    if (Object.keys(validationErrors).length > 0 || hasActionErrors || hasLegendaryActionErrors) {
+    if (
+      Object.keys(validationErrors).length > 0 ||
+      hasActionErrors ||
+      hasLegendaryActionErrors ||
+      hasSpecialAbilityErrors
+    ) {
       return
     }
 
@@ -809,6 +876,18 @@
             @remove="removeLegendaryAction(index)"
           />
           <button type="button" @click="addLegendaryAction">+ Add legendary action</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Special Abilities</legend>
+          <SpecialAbilityEditor
+            v-for="(ability, index) in form.specialAbilities"
+            :key="index"
+            v-model="form.specialAbilities[index]"
+            :errors="specialAbilityErrors[index] ?? {}"
+            @remove="removeSpecialAbility(index)"
+          />
+          <button type="button" @click="addSpecialAbility">+ Add special ability</button>
         </fieldset>
 
         <label>
