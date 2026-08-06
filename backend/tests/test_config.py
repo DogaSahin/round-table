@@ -16,6 +16,7 @@ def test_defaults_when_no_env_set(monkeypatch) -> None:
         "app.modules.factions",
         "app.modules.npcs",
         "app.modules.wiki",
+        "app.modules.bestiary",
         "app.modules.combat",
         "app.modules.maps",
     ]

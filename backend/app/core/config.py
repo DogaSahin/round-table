@@ -27,6 +27,7 @@ class Settings(BaseSettings):
         "app.modules.factions",
         "app.modules.npcs",
         "app.modules.wiki",
+        "app.modules.bestiary",
         "app.modules.combat",
         "app.modules.maps",
     ]
