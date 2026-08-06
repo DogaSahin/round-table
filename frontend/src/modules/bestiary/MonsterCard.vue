@@ -7,6 +7,7 @@
     unfavoriteMonster,
     type BestiaryMonsterListItem,
   } from './api'
+  import Card from '@/components/Card.vue'
 
   const props = defineProps<{
     item: BestiaryMonsterListItem
@@ -44,10 +45,19 @@
 </script>
 
 <template>
-  <div class="monster-card">
+  <Card class="monster-card">
     <button type="button" class="monster-card__body" @click="emit('open', item.id)">
-      <h3>{{ item.name }}</h3>
-      <p>{{ item.creature_type }} &middot; CR {{ formatChallengeRating(item.challenge_rating) }}</p>
+      <div class="monster-card__portrait">
+        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" />
+        <span v-else class="monster-card__initial">{{ item.name.charAt(0).toUpperCase() }}</span>
+        <span class="monster-card__cr">
+          CR {{ formatChallengeRating(item.challenge_rating) }}
+        </span>
+      </div>
+      <div class="monster-card__info">
+        <h3 class="monster-card__name">{{ item.name }}</h3>
+        <span class="monster-card__type">{{ item.creature_type }}</span>
+      </div>
     </button>
     <button
       type="button"
@@ -57,32 +67,105 @@
     >
       {{ isFavorite ? '★' : '☆' }}
     </button>
-  </div>
+  </Card>
 </template>
 
 <style scoped>
   .monster-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
+    position: relative;
+    overflow: hidden;
+    transition:
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .monster-card:hover {
+    box-shadow: var(--shadow-modal);
+    transform: translateY(-2px);
   }
 
   .monster-card__body {
-    flex: 1;
+    display: block;
+    width: 100%;
     text-align: left;
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
+    color: inherit;
+    font-family: var(--font-body);
+  }
+
+  .monster-card__portrait {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 6rem;
+    margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-surface-raised) 140%);
+  }
+
+  .monster-card__portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .monster-card__initial {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-accent-contrast);
+    opacity: 0.85;
+  }
+
+  .monster-card__cr {
+    position: absolute;
+    bottom: var(--space-2);
+    right: var(--space-2);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-bold);
+    padding: var(--space-1) var(--space-2);
+    border-radius: 999px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .monster-card__info {
+    padding-top: var(--space-3);
+  }
+
+  .monster-card__name {
+    margin: 0 0 var(--space-1);
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    font-size: var(--text-base);
+  }
+
+  .monster-card__type {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    text-transform: capitalize;
   }
 
   .monster-card__favorite {
-    background: none;
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: var(--color-surface);
     border: none;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 1.25rem;
+    font-size: var(--text-lg);
+    color: var(--color-warning);
+    box-shadow: var(--shadow-card);
   }
 </style>

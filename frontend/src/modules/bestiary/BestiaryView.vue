@@ -13,6 +13,8 @@
   import MonsterCard from './MonsterCard.vue'
   import MonsterDetailModal from './MonsterDetailModal.vue'
   import MonsterFormModal from './MonsterFormModal.vue'
+  import Button from '@/components/Button.vue'
+  import TextInput from '@/components/TextInput.vue'
 
   const DEFAULT_SORT: BestiarySort = 'name'
 
@@ -117,13 +119,14 @@
 </script>
 
 <template>
-  <section>
-    <h1>Bestiary</h1>
-    <p v-if="errorMessage">Error: {{ errorMessage }}</p>
-
-    <button type="button" class="bestiary-new-monster" @click="openCreateForm">
-      + New Monster
-    </button>
+  <section class="bestiary-view">
+    <div class="bestiary-view__header">
+      <h1>Bestiary</h1>
+      <Button variant="primary" class="bestiary-new-monster" @click="openCreateForm">
+        + New Monster
+      </Button>
+    </div>
+    <p v-if="errorMessage" class="bestiary-view__error">Error: {{ errorMessage }}</p>
 
     <form class="bestiary-filters" @submit.prevent>
       <button
@@ -135,39 +138,39 @@
         ★ Favorites
       </button>
 
-      <input v-model="search" type="text" placeholder="Search" />
+      <TextInput v-model="search" placeholder="Search" />
 
-      <select v-model="creatureType">
+      <select v-model="creatureType" class="native-select">
         <option value="">All types</option>
         <option v-for="t in availableTypes" :key="t" :value="t">{{ t }}</option>
       </select>
 
-      <select v-model="crMin">
+      <select v-model="crMin" class="native-select">
         <option :value="null">Min CR</option>
         <option v-for="opt in crOptions" :key="opt.value" :value="opt.value">
           {{ opt.label }}
         </option>
       </select>
 
-      <select v-model="crMax">
+      <select v-model="crMax" class="native-select">
         <option :value="null">Max CR</option>
         <option v-for="opt in crOptions" :key="opt.value" :value="opt.value">
           {{ opt.label }}
         </option>
       </select>
 
-      <select v-model="sort">
+      <select v-model="sort" class="native-select">
         <option value="name">Name</option>
         <option value="cr">Challenge Rating</option>
         <option value="created_at">Recently added</option>
       </select>
 
-      <button type="button" @click="clearFilters">Clear filters</button>
+      <Button variant="ghost" @click="clearFilters">Clear filters</Button>
     </form>
 
     <p v-if="monsters.length === 0" class="bestiary-empty">
       No monsters match these filters.
-      <button type="button" @click="clearFilters">Clear filters</button>
+      <Button variant="ghost" @click="clearFilters">Clear filters</Button>
     </p>
 
     <div v-else class="bestiary-grid">
@@ -198,33 +201,62 @@
 </template>
 
 <style scoped>
-  .bestiary-new-monster {
-    margin-bottom: 1rem;
+  .bestiary-view__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  .bestiary-view__error {
+    color: var(--color-danger);
   }
 
   .bestiary-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .native-select {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
   }
 
   .bestiary-filters__favorites-chip {
-    border: 1px solid #ccc;
+    border: 1px solid var(--color-border);
     border-radius: 999px;
-    background: none;
-    padding: 0.25rem 0.75rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
     cursor: pointer;
+    transition:
+      background-color var(--transition-fast),
+      border-color var(--transition-fast);
   }
 
   .bestiary-filters__favorites-chip[aria-pressed='true'] {
-    background: #ffd700;
-    border-color: #e6c200;
+    background: var(--color-warning-bg);
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+  }
+
+  .bestiary-empty {
+    color: var(--color-text-muted);
   }
 
   .bestiary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.75rem;
+    gap: var(--space-3);
   }
 </style>

@@ -12,5 +12,11 @@ export default ts.config(
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: ts.parser } },
   },
+  {
+    // Design-system base/primitive components (Button, Card, Modal, Badge, ...) are
+    // intentionally single-word by convention -- they're the atoms, not feature components.
+    files: ['src/components/**/*.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
   eslintConfigPrettier,
 )

@@ -2,6 +2,9 @@
   // frontend/src/modules/bestiary/ActionEditor.vue
   import { ref } from 'vue'
   import type { AbilityName } from './api'
+  import TextInput from '@/components/TextInput.vue'
+  import Checkbox from '@/components/Checkbox.vue'
+  import Button from '@/components/Button.vue'
 
   interface DamageRowState {
     dice: string
@@ -113,41 +116,45 @@
 
 <template>
   <div class="action-editor">
-    <label>
+    <label class="field-label">
       Name
-      <input v-model="model.name" type="text" name="name" />
-      <span v-if="errors.name" class="field-error">{{ errors.name }}</span>
+      <TextInput v-model="model.name" name="name" :error="errors.name" />
     </label>
 
-    <label>
+    <label class="field-label">
       Description
-      <textarea v-model="model.description" name="description"></textarea>
+      <textarea
+        v-model="model.description"
+        name="description"
+        class="action-editor__textarea"
+      ></textarea>
       <span v-if="errors.description" class="field-error">{{ errors.description }}</span>
     </label>
 
-    <label>
+    <label class="field-label">
       Attack Bonus
-      <input v-model.number="model.attackBonus" type="number" name="attackBonus" />
+      <TextInput v-model="model.attackBonus" type="number" name="attackBonus" />
     </label>
 
-    <label>
+    <label class="field-label">
       Reach or Range
-      <input v-model="model.reachOrRange" type="text" name="reachOrRange" />
+      <TextInput v-model="model.reachOrRange" name="reachOrRange" />
     </label>
 
-    <label>
+    <label class="field-label">
       Target
-      <input v-model="model.target" type="text" name="target" />
+      <TextInput v-model="model.target" name="target" />
     </label>
 
-    <fieldset>
+    <fieldset class="action-editor__fieldset">
       <legend>Damage</legend>
       <div v-for="(row, index) in model.damage" :key="index" class="damage-row">
-        <input v-model="row.dice" type="text" :name="`damageDice-${index}`" placeholder="1d6" />
+        <TextInput v-model="row.dice" :name="`damageDice-${index}`" placeholder="1d6" />
         <select
           v-if="!customDamageRows[index]"
           :name="`damageType-${index}`"
           :value="row.damageType"
+          class="native-select"
           @change="onDamageTypeSelectChange(index, ($event.target as HTMLSelectElement).value)"
         >
           <option value="" disabled>Select…</option>
@@ -156,22 +163,19 @@
           </option>
           <option :value="DAMAGE_TYPE_CUSTOM_OPTION">Other (custom)...</option>
         </select>
-        <input v-else v-model="row.damageType" type="text" :name="`damageType-${index}`" />
-        <button type="button" aria-label="Remove damage entry" @click="removeDamageRow(index)">
+        <TextInput v-else v-model="row.damageType" :name="`damageType-${index}`" />
+        <Button variant="ghost" aria-label="Remove damage entry" @click="removeDamageRow(index)">
           ×
-        </button>
+        </Button>
       </div>
-      <button type="button" @click="addDamageRow">+ Add damage</button>
+      <Button variant="secondary" @click="addDamageRow">+ Add damage</Button>
     </fieldset>
 
-    <label>
-      <input v-model="model.hasSave" type="checkbox" name="hasSave" />
-      Has saving throw
-    </label>
+    <Checkbox v-model="model.hasSave" name="hasSave">Has saving throw</Checkbox>
     <template v-if="model.hasSave">
-      <label>
+      <label class="field-label">
         Ability
-        <select v-model="model.saveAbility" name="saveAbility">
+        <select v-model="model.saveAbility" name="saveAbility" class="native-select">
           <option :value="null" disabled>Select…</option>
           <option v-for="ability in SAVE_ABILITIES" :key="ability" :value="ability">
             {{ ability }}
@@ -179,69 +183,117 @@
         </select>
         <span v-if="errors.saveAbility" class="field-error">{{ errors.saveAbility }}</span>
       </label>
-      <label>
+      <label class="field-label">
         DC
-        <input v-model.number="model.saveDc" type="number" name="saveDc" />
-        <span v-if="errors.saveDc" class="field-error">{{ errors.saveDc }}</span>
+        <TextInput v-model="model.saveDc" type="number" name="saveDc" :error="errors.saveDc" />
       </label>
-      <label>
+      <label class="field-label">
         Effect on save
-        <input v-model="model.saveEffect" type="text" name="saveEffect" />
-        <span v-if="errors.saveEffect" class="field-error">{{ errors.saveEffect }}</span>
+        <TextInput v-model="model.saveEffect" name="saveEffect" :error="errors.saveEffect" />
       </label>
     </template>
 
-    <label>
+    <label class="field-label">
       Recharge
-      <input v-model="model.recharge" type="text" name="recharge" placeholder="5-6" />
+      <TextInput v-model="model.recharge" name="recharge" placeholder="5-6" />
     </label>
 
-    <label>
+    <label class="field-label">
       Uses per Day
-      <input v-model.number="model.usesPerDay" type="number" name="usesPerDay" />
-      <span v-if="errors.usesPerDay" class="field-error">{{ errors.usesPerDay }}</span>
+      <TextInput
+        v-model="model.usesPerDay"
+        type="number"
+        name="usesPerDay"
+        :error="errors.usesPerDay"
+      />
     </label>
 
-    <label v-if="showCost">
+    <label v-if="showCost" class="field-label">
       Cost
-      <input v-model.number="model.cost" type="number" name="cost" />
-      <span v-if="errors.cost" class="field-error">{{ errors.cost }}</span>
+      <TextInput v-model="model.cost" type="number" name="cost" :error="errors.cost" />
     </label>
 
-    <fieldset v-if="otherActionNames.length > 0">
+    <fieldset v-if="otherActionNames.length > 0" class="action-editor__fieldset">
       <legend>Multiattack References</legend>
-      <label v-for="opt in otherActionNames" :key="opt.clientKey">
-        <input
-          type="checkbox"
-          :name="`multiattack-${opt.clientKey}`"
-          :checked="model.multiattackRefs.includes(opt.clientKey)"
-          @change="toggleMultiattackRef(opt.clientKey, ($event.target as HTMLInputElement).checked)"
-        />
+      <Checkbox
+        v-for="opt in otherActionNames"
+        :key="opt.clientKey"
+        :name="`multiattack-${opt.clientKey}`"
+        :model-value="model.multiattackRefs.includes(opt.clientKey)"
+        @update:model-value="(checked) => toggleMultiattackRef(opt.clientKey, checked)"
+      >
         {{ opt.name || '(unnamed action)' }}
-      </label>
+      </Checkbox>
     </fieldset>
 
-    <button type="button" @click="emit('remove')">Remove action</button>
+    <Button variant="danger" @click="emit('remove')">Remove action</Button>
   </div>
 </template>
 
 <style scoped>
   .action-editor {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .action-editor__fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .action-editor__fieldset legend {
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    padding: 0 var(--space-2);
+  }
+
+  .action-editor__textarea {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    resize: vertical;
+  }
+
+  .native-select {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
   }
 
   .damage-row {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    align-items: flex-start;
+    gap: var(--space-2);
   }
 
   .field-error {
-    color: #c00;
+    color: var(--color-danger);
     display: block;
-    font-size: 0.85rem;
+    font-size: var(--text-xs);
   }
 </style>

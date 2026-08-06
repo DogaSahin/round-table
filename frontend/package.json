@@ -7,8 +7,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write \"src/**/*.{ts,vue}\" \"*.{ts,js}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"*.{ts,js}\"",
+    "format": "prettier --write \"src/**/*.{ts,vue,css}\" \"*.{ts,js}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,vue,css}\" \"*.{ts,js}\"",
     "test": "vitest run"
   },
   "dependencies": {

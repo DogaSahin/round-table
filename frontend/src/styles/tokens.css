@@ -1,0 +1,88 @@
+/* frontend/src/styles/tokens.css */
+:root {
+  /* Color — Arcane Parchment (light, default) */
+  --color-bg: #f5ecda;
+  --color-surface: #faf3e5;
+  --color-surface-raised: #fff9ee;
+  --color-border: #d8c6a3;
+  --color-text: #4a2e1a;
+  --color-text-muted: #8a6d4a;
+  --color-accent: #8b3a3a;
+  --color-accent-hover: #7a2e2e;
+  --color-accent-contrast: #faf3e5;
+  --color-success: #4a6741;
+  --color-success-bg: #dfe8da;
+  --color-danger: #a13d3d;
+  --color-danger-bg: #f3dcdc;
+  --color-warning: #a67c3d;
+  --color-warning-bg: #f0e6cf;
+  --color-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Typography */
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  /* Spacing (4px base scale) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Radius (theme-independent) */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Shadows — light */
+  --shadow-card: 0 1px 3px rgba(74, 46, 26, 0.08);
+  --shadow-modal: 0 8px 24px rgba(74, 46, 26, 0.15);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+}
+
+:root[data-theme='dark'] {
+  /* Color — Dungeon Dark */
+  --color-bg: #16161d;
+  --color-surface: #1e1e27;
+  --color-surface-raised: #26262f;
+  --color-border: #2a2a35;
+  --color-text: #f4f4f5;
+  --color-text-muted: #8b8b96;
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #7c4ded;
+  --color-accent-contrast: #ffffff;
+  --color-success: #34d399;
+  --color-success-bg: #0f5132;
+  --color-danger: #f43f5e;
+  --color-danger-bg: #4c0519;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #451a03;
+
+  /* Shadows — dark (glow) */
+  --shadow-card: 0 0 14px rgba(139, 92, 246, 0.12);
+  --shadow-modal: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
