@@ -12,6 +12,7 @@
     type SpecialAbility,
     type Speed,
   } from './api'
+  import Button from '@/components/Button.vue'
 
   const props = defineProps<{
     monsterId: number | null
@@ -142,11 +143,21 @@
 <template>
   <div v-if="monsterId !== null" class="monster-detail-modal__backdrop" @click.self="emit('close')">
     <div class="monster-detail-modal__body">
-      <button type="button" class="monster-detail-modal__close" @click="emit('close')">
-        Close
-      </button>
-      <button type="button" class="monster-detail-modal__edit" @click="handleEdit">Edit</button>
+      <div class="monster-detail-modal__toolbar">
+        <Button variant="ghost" class="monster-detail-modal__close" @click="emit('close')">
+          Close
+        </Button>
+        <Button variant="primary" class="monster-detail-modal__edit" @click="handleEdit">
+          Edit
+        </Button>
+      </div>
       <template v-if="detail">
+        <img
+          v-if="detail.image_url"
+          :src="detail.image_url"
+          :alt="detail.name"
+          class="monster-detail-modal__image"
+        />
         <h2>{{ detail.name }}</h2>
         <p>
           {{ detail.statblock.size }} {{ detail.statblock.creature_type
@@ -253,18 +264,56 @@
   .monster-detail-modal__backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 100;
   }
 
   .monster-detail-modal__body {
-    background: white;
-    border-radius: 4px;
-    padding: 1.5rem;
-    max-width: 32rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-modal);
+    padding: var(--space-5);
+    max-width: 40rem;
     max-height: 80vh;
     overflow-y: auto;
+    font-family: var(--font-body);
+  }
+
+  .monster-detail-modal__body :deep(h2),
+  .monster-detail-modal__body :deep(h3) {
+    font-family: var(--font-heading);
+    color: var(--color-text);
+  }
+
+  .monster-detail-modal__body :deep(h3) {
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-1);
+    font-size: var(--text-lg);
+  }
+
+  .monster-detail-modal__body :deep(p),
+  .monster-detail-modal__body :deep(li) {
+    color: var(--color-text);
+    font-size: var(--text-sm);
+  }
+
+  .monster-detail-modal__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .monster-detail-modal__image {
+    display: block;
+    width: 100%;
+    max-height: 16rem;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
   }
 </style>

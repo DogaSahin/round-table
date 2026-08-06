@@ -1,5 +1,8 @@
 <script setup lang="ts">
   // frontend/src/modules/bestiary/SpecialAbilityEditor.vue
+  import TextInput from '@/components/TextInput.vue'
+  import Button from '@/components/Button.vue'
+
   interface SpecialAbilityFormState {
     name: string
     description: string
@@ -20,44 +23,73 @@
 
 <template>
   <div class="special-ability-editor">
-    <label>
+    <label class="field-label">
       Name
-      <input v-model="model.name" type="text" name="name" />
-      <span v-if="errors.name" class="field-error">{{ errors.name }}</span>
+      <TextInput v-model="model.name" name="name" :error="errors.name" />
     </label>
 
-    <label>
+    <label class="field-label">
       Description
-      <textarea v-model="model.description" name="description"></textarea>
+      <textarea
+        v-model="model.description"
+        name="description"
+        class="special-ability-editor__textarea"
+      ></textarea>
       <span v-if="errors.description" class="field-error">{{ errors.description }}</span>
     </label>
 
-    <label>
+    <label class="field-label">
       Recharge
-      <input v-model="model.recharge" type="text" name="recharge" placeholder="5-6" />
+      <TextInput v-model="model.recharge" name="recharge" placeholder="5-6" />
     </label>
 
-    <label>
+    <label class="field-label">
       Uses per Day
-      <input v-model.number="model.usesPerDay" type="number" name="usesPerDay" />
-      <span v-if="errors.usesPerDay" class="field-error">{{ errors.usesPerDay }}</span>
+      <TextInput
+        v-model="model.usesPerDay"
+        type="number"
+        name="usesPerDay"
+        :error="errors.usesPerDay"
+      />
     </label>
 
-    <button type="button" @click="emit('remove')">Remove special ability</button>
+    <Button variant="danger" @click="emit('remove')">Remove special ability</Button>
   </div>
 </template>
 
 <style scoped>
   .special-ability-editor {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .special-ability-editor__textarea {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+    resize: vertical;
   }
 
   .field-error {
-    color: #c00;
+    color: var(--color-danger);
     display: block;
-    font-size: 0.85rem;
+    font-size: var(--text-xs);
   }
 </style>

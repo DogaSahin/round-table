@@ -12,7 +12,7 @@
     },
   )
 
-  const model = defineModel<string | number>({ required: true })
+  const model = defineModel<string | number | null>({ required: true })
 </script>
 
 <template>

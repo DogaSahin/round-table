@@ -18,6 +18,10 @@
   import TagListField from './TagListField.vue'
   import ActionEditor from './ActionEditor.vue'
   import SpecialAbilityEditor from './SpecialAbilityEditor.vue'
+  import TextInput from '@/components/TextInput.vue'
+  import SelectInput from '@/components/SelectInput.vue'
+  import Checkbox from '@/components/Checkbox.vue'
+  import Button from '@/components/Button.vue'
 
   const SKILL_OPTIONS = [
     'Acrobatics',
@@ -162,6 +166,7 @@
 
   interface FormState {
     name: string
+    imageUrl: string
     size: string
     creatureType: string
     subtype: string
@@ -305,7 +310,7 @@
     }))
   }
 
-  function formFromStatblock(name: string, sb: Statblock): FormState {
+  function formFromStatblock(name: string, sb: Statblock, imageUrl = ''): FormState {
     const savingThrows: Record<AbilityName, number | null> = {
       strength: null,
       dexterity: null,
@@ -320,6 +325,7 @@
 
     return {
       name,
+      imageUrl,
       size: sb.size,
       creatureType: sb.creature_type,
       subtype: sb.subtype ?? '',
@@ -390,7 +396,7 @@
     try {
       const detail = await fetchMonster(monsterId)
       baseStatblock.value = detail.statblock
-      form.value = formFromStatblock(detail.name, detail.statblock)
+      form.value = formFromStatblock(detail.name, detail.statblock, detail.image_url ?? '')
       customSkillRows.value = detail.statblock.skills.map((s) => !SKILL_OPTIONS.includes(s.skill))
       actionErrors.value = []
       legendaryActionErrors.value = []
@@ -642,10 +648,11 @@
     saving.value = true
     try {
       const statblock = buildStatblock(form.value)
+      const image_url = form.value.imageUrl.trim() || null
       const monster =
         props.monsterId === null
-          ? await createMonster({ name: form.value.name, statblock })
-          : await updateMonster(props.monsterId, { name: form.value.name, statblock })
+          ? await createMonster({ name: form.value.name, statblock, image_url })
+          : await updateMonster(props.monsterId, { name: form.value.name, statblock, image_url })
       emit('saved', monster)
     } catch (err) {
       errorMessage.value = err instanceof ApiError ? err.message : 'Unknown error'
@@ -659,142 +666,202 @@
   <div class="monster-form-modal__backdrop" @click.self="emit('close')">
     <div class="monster-form-modal__body">
       <h2>{{ monsterId === null ? 'New Monster' : 'Edit Monster' }}</h2>
-      <p v-if="errorMessage">Error: {{ errorMessage }}</p>
+      <p v-if="errorMessage" class="monster-form-modal__error">Error: {{ errorMessage }}</p>
 
       <form class="monster-form-modal__form" @submit.prevent="submit">
-        <label>
-          Name
-          <input v-model="form.name" type="text" name="name" />
-          <span v-if="errors.name" class="field-error">{{ errors.name }}</span>
-        </label>
-
-        <label>
-          Size
-          <input v-model="form.size" type="text" name="size" />
-          <span v-if="errors.size" class="field-error">{{ errors.size }}</span>
-        </label>
-
-        <label>
-          Type
-          <input v-model="form.creatureType" type="text" name="creatureType" />
-          <span v-if="errors.creatureType" class="field-error">{{ errors.creatureType }}</span>
-        </label>
-
-        <label>
-          Subtype
-          <input v-model="form.subtype" type="text" name="subtype" />
-        </label>
-
-        <label>
-          Alignment
-          <input v-model="form.alignment" type="text" name="alignment" />
-          <span v-if="errors.alignment" class="field-error">{{ errors.alignment }}</span>
-        </label>
-
-        <label>
-          Armor Class
-          <input v-model.number="form.armorClass" type="number" name="armorClass" />
-          <span v-if="errors.armorClass" class="field-error">{{ errors.armorClass }}</span>
-        </label>
-
-        <label>
-          Armor Class Notes
-          <input v-model="form.armorClassNotes" type="text" name="armorClassNotes" />
-        </label>
-
-        <label>
-          Hit Points
-          <input v-model.number="form.hitPoints" type="number" name="hitPoints" />
-          <span v-if="errors.hitPoints" class="field-error">{{ errors.hitPoints }}</span>
-        </label>
-
-        <label>
-          Hit Dice
-          <input v-model="form.hitDice" type="text" name="hitDice" />
-          <span v-if="errors.hitDice" class="field-error">{{ errors.hitDice }}</span>
-        </label>
-
-        <fieldset>
-          <legend>Speed</legend>
-          <label>
-            Walk
-            <input v-model.number="form.speedWalk" type="number" name="speedWalk" />
-          </label>
-          <label>
-            Fly
-            <input v-model.number="form.speedFly" type="number" name="speedFly" />
-          </label>
-          <label>
-            Swim
-            <input v-model.number="form.speedSwim" type="number" name="speedSwim" />
-          </label>
-          <label>
-            Climb
-            <input v-model.number="form.speedClimb" type="number" name="speedClimb" />
-          </label>
-          <label>
-            Burrow
-            <input v-model.number="form.speedBurrow" type="number" name="speedBurrow" />
-          </label>
-          <label>
-            <input v-model="form.speedHover" type="checkbox" name="speedHover" />
-            Hover
-          </label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Ability Scores</legend>
-          <label>
-            STR
-            <input v-model.number="form.strength" type="number" name="strength" />
-            <span v-if="errors.strength" class="field-error">{{ errors.strength }}</span>
-          </label>
-          <label>
-            DEX
-            <input v-model.number="form.dexterity" type="number" name="dexterity" />
-            <span v-if="errors.dexterity" class="field-error">{{ errors.dexterity }}</span>
-          </label>
-          <label>
-            CON
-            <input v-model.number="form.constitution" type="number" name="constitution" />
-            <span v-if="errors.constitution" class="field-error">{{ errors.constitution }}</span>
-          </label>
-          <label>
-            INT
-            <input v-model.number="form.intelligence" type="number" name="intelligence" />
-            <span v-if="errors.intelligence" class="field-error">{{ errors.intelligence }}</span>
-          </label>
-          <label>
-            WIS
-            <input v-model.number="form.wisdom" type="number" name="wisdom" />
-            <span v-if="errors.wisdom" class="field-error">{{ errors.wisdom }}</span>
-          </label>
-          <label>
-            CHA
-            <input v-model.number="form.charisma" type="number" name="charisma" />
-            <span v-if="errors.charisma" class="field-error">{{ errors.charisma }}</span>
-          </label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Saving Throws</legend>
-          <label v-for="ability in SAVING_THROW_ABILITIES" :key="ability.key">
-            {{ ability.label }}
-            <input
-              v-model.number="form.savingThrows[ability.key]"
-              type="number"
-              :name="`savingThrow-${ability.key}`"
+        <fieldset class="monster-form-modal__fieldset">
+          <legend>Basics</legend>
+          <div class="monster-form-modal__grid">
+            <label class="field-label">
+              Name
+              <TextInput v-model="form.name" name="name" :error="errors.name" />
+            </label>
+            <label class="field-label">
+              Size
+              <TextInput v-model="form.size" name="size" :error="errors.size" />
+            </label>
+            <label class="field-label">
+              Type
+              <TextInput
+                v-model="form.creatureType"
+                name="creatureType"
+                :error="errors.creatureType"
+              />
+            </label>
+            <label class="field-label">
+              Subtype
+              <TextInput v-model="form.subtype" name="subtype" />
+            </label>
+            <label class="field-label">
+              Alignment
+              <TextInput v-model="form.alignment" name="alignment" :error="errors.alignment" />
+            </label>
+            <label class="field-label monster-form-modal__full-width">
+              Image URL
+              <TextInput v-model="form.imageUrl" name="imageUrl" placeholder="https://…" />
+            </label>
+            <img
+              v-if="form.imageUrl.trim()"
+              :src="form.imageUrl.trim()"
+              alt="Image preview"
+              class="monster-form-modal__image-preview monster-form-modal__full-width"
             />
-          </label>
+          </div>
         </fieldset>
 
-        <fieldset>
+        <fieldset class="monster-form-modal__fieldset">
+          <legend>Combat Stats</legend>
+          <div class="monster-form-modal__grid">
+            <label class="field-label">
+              Armor Class
+              <TextInput
+                v-model="form.armorClass"
+                type="number"
+                name="armorClass"
+                :error="errors.armorClass"
+              />
+            </label>
+            <label class="field-label">
+              Armor Class Notes
+              <TextInput v-model="form.armorClassNotes" name="armorClassNotes" />
+            </label>
+            <label class="field-label">
+              Hit Points
+              <TextInput
+                v-model="form.hitPoints"
+                type="number"
+                name="hitPoints"
+                :error="errors.hitPoints"
+              />
+            </label>
+            <label class="field-label">
+              Hit Dice
+              <TextInput v-model="form.hitDice" name="hitDice" :error="errors.hitDice" />
+            </label>
+            <label class="field-label">
+              Challenge Rating
+              <SelectInput
+                v-model="form.challengeRating"
+                name="challengeRating"
+                :options="crOptions"
+              />
+            </label>
+            <label class="field-label">
+              Experience Points
+              <TextInput
+                v-model="form.experiencePoints"
+                type="number"
+                name="experiencePoints"
+                :error="errors.experiencePoints"
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="monster-form-modal__fieldset">
+          <legend>Speed</legend>
+          <div class="monster-form-modal__grid">
+            <label class="field-label">
+              Walk
+              <TextInput v-model="form.speedWalk" type="number" name="speedWalk" />
+            </label>
+            <label class="field-label">
+              Fly
+              <TextInput v-model="form.speedFly" type="number" name="speedFly" />
+            </label>
+            <label class="field-label">
+              Swim
+              <TextInput v-model="form.speedSwim" type="number" name="speedSwim" />
+            </label>
+            <label class="field-label">
+              Climb
+              <TextInput v-model="form.speedClimb" type="number" name="speedClimb" />
+            </label>
+            <label class="field-label">
+              Burrow
+              <TextInput v-model="form.speedBurrow" type="number" name="speedBurrow" />
+            </label>
+            <Checkbox v-model="form.speedHover" name="speedHover">Hover</Checkbox>
+          </div>
+        </fieldset>
+
+        <fieldset class="monster-form-modal__fieldset">
+          <legend>Ability Scores</legend>
+          <div class="monster-form-modal__grid">
+            <label class="field-label">
+              STR
+              <TextInput
+                v-model="form.strength"
+                type="number"
+                name="strength"
+                :error="errors.strength"
+              />
+            </label>
+            <label class="field-label">
+              DEX
+              <TextInput
+                v-model="form.dexterity"
+                type="number"
+                name="dexterity"
+                :error="errors.dexterity"
+              />
+            </label>
+            <label class="field-label">
+              CON
+              <TextInput
+                v-model="form.constitution"
+                type="number"
+                name="constitution"
+                :error="errors.constitution"
+              />
+            </label>
+            <label class="field-label">
+              INT
+              <TextInput
+                v-model="form.intelligence"
+                type="number"
+                name="intelligence"
+                :error="errors.intelligence"
+              />
+            </label>
+            <label class="field-label">
+              WIS
+              <TextInput v-model="form.wisdom" type="number" name="wisdom" :error="errors.wisdom" />
+            </label>
+            <label class="field-label">
+              CHA
+              <TextInput
+                v-model="form.charisma"
+                type="number"
+                name="charisma"
+                :error="errors.charisma"
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="monster-form-modal__fieldset">
+          <legend>Saving Throws</legend>
+          <div class="monster-form-modal__grid">
+            <label v-for="ability in SAVING_THROW_ABILITIES" :key="ability.key" class="field-label">
+              {{ ability.label }}
+              <TextInput
+                v-model="form.savingThrows[ability.key]"
+                type="number"
+                :name="`savingThrow-${ability.key}`"
+              />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="monster-form-modal__fieldset">
           <legend>Skills</legend>
           <div v-for="(row, index) in form.skills" :key="index" class="skill-row">
             <select
               v-if="!customSkillRows[index]"
               :name="`skill-${index}`"
               :value="row.skill"
+              class="native-select"
               @change="onSkillSelectChange(index, ($event.target as HTMLSelectElement).value)"
             >
               <option value="" disabled>Select skill…</option>
@@ -803,11 +870,11 @@
               </option>
               <option :value="SKILL_CUSTOM_OPTION">Other (custom)...</option>
             </select>
-            <input v-else v-model="row.skill" type="text" :name="`skill-${index}`" />
-            <input v-model.number="row.bonus" type="number" :name="`skillBonus-${index}`" />
-            <button type="button" @click="removeSkillRow(index)">×</button>
+            <TextInput v-else v-model="row.skill" :name="`skill-${index}`" />
+            <TextInput v-model="row.bonus" type="number" :name="`skillBonus-${index}`" />
+            <Button variant="ghost" @click="removeSkillRow(index)">×</Button>
           </div>
-          <button type="button" @click="addSkillRow">+ Add skill</button>
+          <Button variant="secondary" @click="addSkillRow">+ Add skill</Button>
         </fieldset>
 
         <TagListField
@@ -837,7 +904,7 @@
         <TagListField v-model="form.senses" label="Senses" field-name="senses" />
         <TagListField v-model="form.languages" label="Languages" field-name="languages" />
 
-        <fieldset>
+        <fieldset class="monster-form-modal__fieldset">
           <legend>Actions</legend>
           <ActionEditor
             v-for="(action, index) in form.actions"
@@ -849,21 +916,19 @@
             :damage-type-options="DAMAGE_TYPE_OPTIONS"
             @remove="removeAction(index)"
           />
-          <button type="button" @click="addAction">+ Add action</button>
+          <Button variant="secondary" @click="addAction">+ Add action</Button>
         </fieldset>
 
-        <fieldset>
+        <fieldset class="monster-form-modal__fieldset">
           <legend>Legendary Actions</legend>
-          <label>
+          <label class="field-label">
             Legendary Actions Per Turn
-            <input
-              v-model.number="form.legendaryActionsPerTurn"
+            <TextInput
+              v-model="form.legendaryActionsPerTurn"
               type="number"
               name="legendaryActionsPerTurn"
+              :error="errors.legendaryActionsPerTurn"
             />
-            <span v-if="errors.legendaryActionsPerTurn" class="field-error">
-              {{ errors.legendaryActionsPerTurn }}
-            </span>
           </label>
           <ActionEditor
             v-for="(action, index) in form.legendaryActions"
@@ -875,10 +940,10 @@
             :damage-type-options="DAMAGE_TYPE_OPTIONS"
             @remove="removeLegendaryAction(index)"
           />
-          <button type="button" @click="addLegendaryAction">+ Add legendary action</button>
+          <Button variant="secondary" @click="addLegendaryAction">+ Add legendary action</Button>
         </fieldset>
 
-        <fieldset>
+        <fieldset class="monster-form-modal__fieldset">
           <legend>Special Abilities</legend>
           <SpecialAbilityEditor
             v-for="(ability, index) in form.specialAbilities"
@@ -887,28 +952,13 @@
             :errors="specialAbilityErrors[index] ?? {}"
             @remove="removeSpecialAbility(index)"
           />
-          <button type="button" @click="addSpecialAbility">+ Add special ability</button>
+          <Button variant="secondary" @click="addSpecialAbility">+ Add special ability</Button>
         </fieldset>
 
-        <label>
-          Challenge Rating
-          <select v-model="form.challengeRating" name="challengeRating">
-            <option v-for="opt in crOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-        </label>
-
-        <label>
-          Experience Points
-          <input v-model.number="form.experiencePoints" type="number" name="experiencePoints" />
-          <span v-if="errors.experiencePoints" class="field-error">
-            {{ errors.experiencePoints }}
-          </span>
-        </label>
-
-        <button type="submit" :disabled="saving">Save</button>
-        <button type="button" @click="emit('close')">Cancel</button>
+        <div class="monster-form-modal__actions">
+          <Button type="submit" variant="primary" :disabled="saving">Save</Button>
+          <Button variant="secondary" @click="emit('close')">Cancel</Button>
+        </div>
       </form>
     </div>
   </div>
@@ -918,30 +968,102 @@
   .monster-form-modal__backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 100;
   }
 
   .monster-form-modal__body {
-    background: white;
-    border-radius: 4px;
-    padding: 1.5rem;
-    max-width: 32rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-modal);
+    padding: var(--space-5);
+    max-width: 40rem;
     max-height: 80vh;
     overflow-y: auto;
+    font-family: var(--font-body);
   }
 
-  .field-error {
-    color: #c00;
-    display: block;
-    font-size: 0.85rem;
+  .monster-form-modal__body h2 {
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    margin-top: 0;
+  }
+
+  .monster-form-modal__error {
+    color: var(--color-danger);
+  }
+
+  .monster-form-modal__image-preview {
+    width: 100%;
+    max-height: 12rem;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  .monster-form-modal__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .monster-form-modal__fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+
+  .monster-form-modal__fieldset legend {
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    padding: 0 var(--space-2);
+  }
+
+  .monster-form-modal__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    align-items: start;
+    gap: var(--space-3) var(--space-4);
+  }
+
+  .monster-form-modal__full-width {
+    grid-column: 1 / -1;
+  }
+
+  .native-select {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
   }
 
   .skill-row {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .monster-form-modal__actions {
+    display: flex;
+    gap: var(--space-2);
   }
 </style>

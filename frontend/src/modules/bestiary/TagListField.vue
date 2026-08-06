@@ -1,6 +1,8 @@
 <script setup lang="ts">
   // frontend/src/modules/bestiary/TagListField.vue
   import { ref, watch } from 'vue'
+  import TextInput from '@/components/TextInput.vue'
+  import Button from '@/components/Button.vue'
 
   interface TagOption {
     value: string
@@ -86,6 +88,7 @@
         v-if="options && !customRows[index]"
         :name="`${fieldName}-${index}`"
         :value="value"
+        class="native-select"
         @change="onSelectChange(index, ($event.target as HTMLSelectElement).value)"
       >
         <option value="" disabled>Select…</option>
@@ -94,25 +97,49 @@
         </option>
         <option :value="CUSTOM_OPTION">Other (custom)...</option>
       </select>
-      <input
+      <TextInput
         v-else
         :name="`${fieldName}-${index}`"
-        type="text"
-        :value="value"
-        @input="setValue(index, ($event.target as HTMLInputElement).value)"
+        :model-value="value"
+        @update:model-value="(next) => setValue(index, String(next))"
       />
-      <button type="button" :aria-label="`Remove ${label} entry`" @click="removeRow(index)">
+      <Button variant="ghost" :aria-label="`Remove ${label} entry`" @click="removeRow(index)">
         ×
-      </button>
+      </Button>
     </div>
-    <button type="button" @click="addRow">+ Add {{ label }}</button>
+    <Button variant="secondary" @click="addRow">+ Add {{ label }}</Button>
   </fieldset>
 </template>
 
 <style scoped>
+  .tag-list-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .tag-list-field legend {
+    font-family: var(--font-heading);
+    color: var(--color-text);
+    padding: 0 var(--space-2);
+  }
+
+  .native-select {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-3);
+  }
+
   .tag-list-field__row {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    align-items: flex-start;
+    gap: var(--space-2);
   }
 </style>

@@ -311,7 +311,55 @@ describe('MonsterFormModal', () => {
     expect(payload.statblock.legendary_actions).toEqual([])
     expect(payload.statblock.legendary_actions_per_turn).toBe(null)
     expect(payload.statblock.special_abilities).toEqual([])
+    expect(payload.image_url).toBe(null)
     expect(wrapper.emitted('saved')).toEqual([[created]])
+  })
+
+  it('shows an image preview only when a URL is entered', async () => {
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+
+    expect(wrapper.find('.monster-form-modal__image-preview').exists()).toBe(false)
+
+    await wrapper.find('input[name="imageUrl"]').setValue('https://example.com/owlbear.png')
+
+    const preview = wrapper.find('.monster-form-modal__image-preview')
+    expect(preview.exists()).toBe(true)
+    expect(preview.attributes('src')).toBe('https://example.com/owlbear.png')
+
+    await wrapper.find('input[name="imageUrl"]').setValue('')
+    expect(wrapper.find('.monster-form-modal__image-preview').exists()).toBe(false)
+  })
+
+  it('includes a trimmed image_url in a create submission when provided', async () => {
+    const created: BestiaryMonsterDetail = { ...EXISTING_DETAIL, name: 'Test Monster' }
+    const createSpy = vi.spyOn(bestiaryApi, 'createMonster').mockResolvedValue(created)
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: null } })
+    await wrapper.find('input[name="name"]').setValue('Test Monster')
+    await wrapper.find('input[name="creatureType"]').setValue('beast')
+    await wrapper.find('input[name="imageUrl"]').setValue('  https://example.com/owlbear.png  ')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createSpy).toHaveBeenCalledTimes(1)
+    expect(createSpy.mock.calls[0][0].image_url).toBe('https://example.com/owlbear.png')
+  })
+
+  it('pre-fills the image URL from a fetched monster in edit mode', async () => {
+    vi.spyOn(bestiaryApi, 'fetchMonster').mockResolvedValue({
+      ...EXISTING_DETAIL,
+      image_url: 'https://example.com/giant-rat.png',
+    })
+
+    wrapper = mount(MonsterFormModal, { props: { monsterId: 1 } })
+    await flushPromises()
+
+    expect((wrapper.find('input[name="imageUrl"]').element as HTMLInputElement).value).toBe(
+      'https://example.com/giant-rat.png',
+    )
+    expect(wrapper.find('.monster-form-modal__image-preview').attributes('src')).toBe(
+      'https://example.com/giant-rat.png',
+    )
   })
 
   it('includes saving throws, skills, and tag-list entries in a create submission', async () => {
