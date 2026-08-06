@@ -16,6 +16,7 @@
   --color-danger-bg: #f3dcdc;
   --color-warning: #a67c3d;
   --color-warning-bg: #f0e6cf;
+  --color-overlay: rgba(0, 0, 0, 0.5);
 
   /* Typography */
   --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
