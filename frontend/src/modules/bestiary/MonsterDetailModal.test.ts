@@ -61,7 +61,7 @@ const RICH_DETAIL: BestiaryMonsterDetail = {
     armor_class_notes: null,
     hit_points: 7,
     hit_dice: '2d6',
-    speed: { walk: 30, fly: null, swim: null, climb: null, burrow: null, hover: false },
+    speed: { walk: 30, fly: 60, swim: null, climb: null, burrow: null, hover: true },
     ability_scores: {
       strength: 8,
       dexterity: 15,
@@ -183,6 +183,7 @@ describe('MonsterDetailModal', () => {
     expect(bestiaryApi.fetchMonster).toHaveBeenCalledWith(1)
     expect(wrapper.text()).toContain('Giant Rat')
     expect(wrapper.text()).toContain('CR 1/8')
+    expect(wrapper.text()).toContain('Speed 30 ft.')
   })
 
   it('emits close when the close button is clicked', async () => {
@@ -230,6 +231,7 @@ describe('MonsterDetailModal', () => {
     await flushPromises()
 
     const text = wrapper.text()
+    expect(text).toContain('Speed 30 ft., fly 60 ft. (hover)')
     expect(text).toContain('WIS +2, DEX +2')
     expect(text).toContain('Perception +4, Stealth +6')
     expect(text).toContain('Damage Resistances: fire, cold')

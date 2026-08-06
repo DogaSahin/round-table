@@ -10,6 +10,7 @@
     type SavingThrowProficiency,
     type SkillProficiency,
     type SpecialAbility,
+    type Speed,
   } from './api'
 
   const props = defineProps<{
@@ -126,6 +127,16 @@
       .filter((part): part is string => Boolean(part))
       .join(', ')
   }
+
+  function formatSpeed(speed: Speed): string {
+    const parts: string[] = []
+    if (speed.walk !== null) parts.push(`${speed.walk} ft.`)
+    if (speed.fly !== null) parts.push(`fly ${speed.fly} ft.${speed.hover ? ' (hover)' : ''}`)
+    if (speed.swim !== null) parts.push(`swim ${speed.swim} ft.`)
+    if (speed.climb !== null) parts.push(`climb ${speed.climb} ft.`)
+    if (speed.burrow !== null) parts.push(`burrow ${speed.burrow} ft.`)
+    return parts.join(', ')
+  }
 </script>
 
 <template>
@@ -149,6 +160,9 @@
           >
         </p>
         <p>HP {{ detail.statblock.hit_points }} ({{ detail.statblock.hit_dice }})</p>
+        <p v-if="formatSpeed(detail.statblock.speed)">
+          Speed {{ formatSpeed(detail.statblock.speed) }}
+        </p>
         <p>
           CR {{ formatChallengeRating(detail.statblock.challenge_rating) }} ({{
             detail.statblock.experience_points
