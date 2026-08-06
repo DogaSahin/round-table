@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 async function mountShell() {
-  await router.push('/dice')
+  await router.push('/')
   await router.isReady()
   return mount(AppShell, { global: { plugins: [router] } })
 }
