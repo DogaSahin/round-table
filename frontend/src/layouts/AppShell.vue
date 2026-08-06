@@ -21,11 +21,15 @@
         <router-link to="/factions">Factions</router-link>
         <router-link to="/npcs">NPCs</router-link>
         <router-link to="/wiki">Wiki</router-link>
-        <router-link to="/bestiary">Bestiary</router-link>
         <router-link to="/combat">Combat</router-link>
         <router-link to="/maps">Maps</router-link>
       </nav>
-      <Button variant="ghost" class="app-shell__theme-toggle" @click="toggleTheme">
+      <Button
+        variant="ghost"
+        class="app-shell__theme-toggle"
+        :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+        @click="toggleTheme"
+      >
         {{ theme === 'dark' ? '☀️' : '🌙' }}
       </Button>
     </header>
