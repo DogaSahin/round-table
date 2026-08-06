@@ -6,6 +6,7 @@ import SessionsView from '@/modules/sessions/SessionsView.vue'
 import FactionsView from '@/modules/factions/FactionsView.vue'
 import NpcsView from '@/modules/npcs/NpcsView.vue'
 import WikiView from '@/modules/wiki/WikiView.vue'
+import BestiaryView from '@/modules/bestiary/BestiaryView.vue'
 import CombatView from '@/modules/combat/CombatView.vue'
 import MapsView from '@/modules/maps/MapsView.vue'
 
@@ -17,6 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/factions', name: 'factions', component: FactionsView },
   { path: '/npcs', name: 'npcs', component: NpcsView },
   { path: '/wiki', name: 'wiki', component: WikiView },
+  { path: '/bestiary', name: 'bestiary', component: BestiaryView },
   { path: '/combat', name: 'combat', component: CombatView },
   { path: '/maps', name: 'maps', component: MapsView },
 ]
